@@ -40,3 +40,12 @@
 .roster-no-version{margin:10px 0 0}
 @media(max-width:750px){.roster-form-grid{grid-template-columns:1fr 1fr}.roster-stats-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:500px){.roster-form-grid{grid-template-columns:1fr}.roster-stats-grid{grid-template-columns:1fr}.roster-actions{align-items:stretch;flex-direction:column}.roster-version-row{align-items:flex-start;gap:10px;flex-direction:column}}
+
+/* Manual roster workflow */
+.manual-stint-list{display:grid}
+.manual-stint-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 3px;border-bottom:1px solid var(--line)}
+.manual-stint-row:last-child{border-bottom:0}
+.manual-stint-info{display:grid;gap:5px;min-width:0}
+.manual-stint-info strong{font-size:11px}
+.manual-stint-info small{font-size:10px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:550px){.manual-stint-row{align-items:flex-start;flex-direction:column}.manual-stint-row .text-button{align-self:flex-end}}
