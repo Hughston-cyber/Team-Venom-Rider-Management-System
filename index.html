@@ -8,7 +8,6 @@
   <title>Team Venom | Rider Management</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -157,13 +156,13 @@
 
         <div id="rosters-content" hidden>
           <div class="page-heading">
-            <div><p class="eyebrow">TEAM OPERATIONS / SCHEDULING</p><h1>Roster management<span>.</span></h1><p class="subheading">Create race events, import Excel rosters, validate allocations and publish approved schedules.</p></div>
+            <div><p class="eyebrow">TEAM OPERATIONS / SCHEDULING</p><h1>Roster management<span>.</span></h1><p class="subheading">Build race rosters manually, allocate riders to stints and review draft schedules.</p></div>
             <div class="heading-actions"><button class="primary-button" id="new-event-toggle" type="button">+ New event</button></div>
           </div>
           <div class="roster-stats-grid">
             <article class="stat-card"><div class="stat-label">RACE EVENTS</div><div class="stat-value" id="roster-event-count">—</div><div class="stat-foot">Events in the database</div></article>
-            <article class="stat-card"><div class="stat-label">ROSTERS</div><div class="stat-value" id="roster-count">—</div><div class="stat-foot">All roster versions</div></article>
-            <article class="stat-card"><div class="stat-label">SCHEDULED STINTS</div><div class="stat-value" id="roster-stint-count">—</div><div class="stat-foot">Across saved rosters</div></article>
+            <article class="stat-card"><div class="stat-label">ROSTERS</div><div class="stat-value" id="roster-count">—</div><div class="stat-foot">Saved roster versions</div></article>
+            <article class="stat-card"><div class="stat-label">SCHEDULED STINTS</div><div class="stat-value" id="roster-stint-count">—</div><div class="stat-foot">Across visible rosters</div></article>
           </div>
           <div class="panel roster-form-panel" id="event-form-panel" hidden>
             <div class="panel-heading"><div><p class="eyebrow">EVENT SETUP</p><h2>Create race event</h2></div><button class="text-button" id="cancel-event" type="button">Cancel</button></div>
@@ -179,21 +178,41 @@
             <p class="inline-message" id="event-message" role="status"></p>
           </div>
           <div class="panel roster-form-panel">
-            <div class="panel-heading"><div><p class="eyebrow">ROSTER WORKFLOW</p><h2>Import a roster</h2></div><span class="panel-tag">EXCEL / CSV</span></div>
-            <form id="roster-import-form">
-              <div class="roster-form-grid">
-                <label>Race event<select id="roster-event-select" name="event_id" required><option value="">Select an event…</option></select></label>
-                <label>Roster file<input id="roster-file" name="roster_file" type="file" accept=".xlsx,.xls,.csv" required></label>
-                <label>Roster version<input id="roster-version" name="version_number" type="number" min="1" value="1" required></label>
-              </div>
-              <div class="roster-help"><strong>Expected spreadsheet columns</strong><span>stint_number · rider_name · scheduled_start · scheduled_end · roster_notes (optional)</span><small>Use full rider names matching the Rider Directory. Dates should include a time, for example 2026-11-19 12:00.</small></div>
-              <div class="roster-actions"><button class="text-button" id="download-roster-template" type="button">↓ Download CSV template</button><button class="primary-button" id="validate-roster" type="submit">Validate &amp; import roster</button></div>
+            <div class="panel-heading"><div><p class="eyebrow">STEP 1 / DRAFT</p><h2>Create a roster version</h2></div><span class="panel-tag">MANUAL ENTRY</span></div>
+            <form id="create-manual-roster-form" class="roster-form-grid">
+              <label>Race event<select id="manual-event-select" name="event_id" required><option value="">Select an event…</option></select></label>
+              <label>Roster version<input name="version_number" type="number" min="1" value="1" required></label>
+              <div class="form-actions"><button class="primary-button" id="create-manual-roster" type="submit">Create draft roster</button></div>
             </form>
-            <div id="roster-import-message" class="inline-message" role="status" aria-live="polite"></div>
-            <div id="roster-validation" class="roster-validation" hidden></div>
+            <p class="inline-message" id="manual-roster-message" role="status"></p>
           </div>
-          <div class="roster-summary-row"><div><p class="eyebrow">SAVED SCHEDULES</p><h2>Events and rosters</h2></div><button class="text-button" id="refresh-rosters" type="button">↻ Refresh</button></div>
-          <div class="panel roster-table-panel"><div id="roster-loading" class="empty-state">Loading roster records…</div><div id="roster-list" hidden></div><div id="roster-empty" class="empty-state" hidden>No race events or rosters have been created yet. Start by creating an event.</div><div id="roster-error" class="empty-state error-state" hidden>Roster data could not be loaded. Refresh or contact an administrator.</div></div>
+          <div class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">STEP 2 / ALLOCATE</p><h2>Add a stint</h2></div><span class="panel-tag">INDIVIDUAL ENTRY</span></div>
+            <form id="manual-stint-form">
+              <div class="roster-form-grid">
+                <label>Draft roster<select id="manual-roster-select" name="roster_id" required><option value="">Select a draft roster…</option></select></label>
+                <label>Rider<select id="manual-rider-select" name="rider_id" required><option value="">Choose a rider…</option></select></label>
+                <label>Stint number<input name="stint_number" type="number" min="1" step="1" required value="1"></label>
+                <label>Scheduled start<input name="scheduled_start" type="datetime-local" required></label>
+                <label>Scheduled end<input name="scheduled_end" type="datetime-local" required></label>
+                <label>Notes <span class="muted">(optional)</span><input name="roster_notes" maxlength="1000" placeholder="e.g. Bring water bottle"></label>
+              </div>
+              <div class="roster-actions"><span class="muted">Stints are saved individually to the selected draft.</span><button class="primary-button" id="save-manual-stint" type="submit">Add stint</button></div>
+            </form>
+            <p class="inline-message" id="manual-stint-message" role="status" aria-live="polite"></p>
+          </div>
+          <div class="roster-summary-row"><div><p class="eyebrow">CURRENT DRAFT</p><h2>Stint allocations</h2></div><button class="text-button" id="refresh-rosters" type="button">↻ Refresh</button></div>
+          <div class="panel roster-table-panel">
+            <div id="manual-stint-empty" class="empty-state">Select a draft roster to view or add its stints.</div>
+            <div id="manual-stint-list" class="manual-stint-list"></div>
+          </div>
+          <div class="roster-summary-row"><div><p class="eyebrow">SAVED SCHEDULES</p><h2>Events and roster versions</h2></div></div>
+          <div class="panel roster-table-panel">
+            <div id="roster-loading" class="empty-state">Loading roster records…</div>
+            <div id="roster-list" hidden></div>
+            <div id="roster-empty" class="empty-state" hidden>No race events or rosters have been created yet.</div>
+            <div id="roster-error" class="empty-state error-state" hidden>Roster data could not be loaded. Refresh or contact an administrator.</div>
+          </div>
         </div>
         <div id="module-placeholder" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / MODULE</p><h1 id="placeholder-title">Module<span>.</span></h1><p class="subheading" id="placeholder-description"></p></div></div>
