@@ -126,6 +126,33 @@
             <div id="rider-error" class="empty-state error-state" hidden>Rider records could not be loaded. Please refresh or contact an administrator.</div>
           </div>
         </div>
+
+        <div id="rider-profile-content" hidden>
+          <div class="profile-topline"><button class="text-button" id="back-to-riders" type="button">← Back to riders</button><span class="eyebrow">RIDER RECORD / PROFILE</span></div>
+          <div class="profile-hero panel">
+            <div id="profile-avatar" class="profile-avatar">TV</div>
+            <div class="profile-heading-copy"><p class="eyebrow">TEAM VENOM RIDER</p><h1 id="profile-name">Rider profile<span>.</span></h1><p id="profile-legal-name" class="subheading"></p></div>
+            <div class="profile-hero-meta"><span id="profile-number" class="profile-number">No number</span><span id="profile-status" class="status-badge status-active">Active</span></div>
+          </div>
+          <div class="profile-stats-grid">
+            <article class="stat-card"><div class="stat-label">RACE STINTS</div><div class="stat-value" id="profile-stints">—</div><div class="stat-foot">Recorded appearances</div></article>
+            <article class="stat-card"><div class="stat-label">LAPS COMPLETED</div><div class="stat-value" id="profile-laps">—</div><div class="stat-foot">Across recorded stints</div></article>
+            <article class="stat-card"><div class="stat-label">EVENTS ATTENDED</div><div class="stat-value" id="profile-events">—</div><div class="stat-foot">Distinct race events</div></article>
+            <article class="stat-card"><div class="stat-label">BEST RECORDED LAP</div><div class="stat-value" id="profile-best-lap">—</div><div class="stat-foot">From recorded race stints</div></article>
+          </div>
+          <div class="profile-columns">
+            <section class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">RACE RECORD</p><h2>Participation history</h2></div></div>
+              <div id="profile-history" class="profile-history"><div class="empty-state">Loading race history…</div></div>
+            </section>
+            <section class="panel" id="private-notes-panel" hidden>
+              <div class="panel-heading"><div><p class="eyebrow">RESTRICTED ACCESS</p><h2>Private management notes</h2></div><span class="panel-tag">ADMIN / MANAGER</span></div>
+              <p class="profile-note-help">Only authorised administrators and managers can view or edit these notes.</p>
+              <textarea id="profile-private-notes" rows="7" maxlength="10000" placeholder="Add confidential management notes for this rider…"></textarea>
+              <div class="profile-note-actions"><span id="private-notes-message" class="inline-message" role="status"></span><button class="primary-button" id="save-private-notes" type="button">Save notes</button></div>
+            </section>
+          </div>
+        </div>
         <div id="module-placeholder" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / MODULE</p><h1 id="placeholder-title">Module<span>.</span></h1><p class="subheading" id="placeholder-description"></p></div></div>
           <div class="panel placeholder-panel"><span class="live-indicator">IN DEVELOPMENT</span><h2>This module is being built</h2><p class="muted">The next development stage will connect this area to the live Team Venom database.</p></div>
