@@ -7,10 +7,28 @@
   <meta name="description" content="Team Venom Rider Management System">
   <title>Team Venom | Rider Management</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
-  <div class="app-shell">
+  <section class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark">V</span><div><strong>TEAM <em>VENOM</em></strong><small>RIDER OPERATIONS</small></div></div>
+      <p class="eyebrow">SECURE TEAM ACCESS</p>
+      <h1>Welcome back<span>.</span></h1>
+      <p class="auth-copy">Sign in with your authorised Team Venom account to access rider and roster operations.</p>
+      <form id="login-form">
+        <label for="login-email">Email address</label>
+        <input id="login-email" name="email" type="email" autocomplete="username" required>
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <button class="auth-submit" id="login-submit" type="submit">Sign in <span>→</span></button>
+      </form>
+      <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+      <p class="auth-foot">Private workspace · Access is managed by Team Venom administrators</p>
+    </div>
+  </section>
+  <div class="app-shell" id="app-shell" hidden>
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="#" aria-label="Team Venom home">
         <span class="brand-mark">V</span>
@@ -35,7 +53,7 @@
       <header class="topbar">
         <button class="mobile-menu" id="menu-toggle" aria-label="Toggle navigation">☰</button>
         <div class="breadcrumb">TEAM VENOM <span>/</span> <strong id="breadcrumb-current">OVERVIEW</strong></div>
-        <div class="topbar-right"><span class="environment">DEVELOPMENT</span><div class="avatar" title="Administrator workspace">TV</div></div>
+        <div class="topbar-right"><span class="environment" id="account-role">AUTHORISED</span><span class="account-name" id="account-name"></span><button class="signout-button" id="signout-button" type="button">Sign out</button></div>
       </header>
 
       <section class="content">
@@ -44,7 +62,7 @@
           <div class="heading-actions"><span class="date-chip">SEASON 2026</span></div>
         </div>
 
-        <div class="notice"><span class="notice-icon">i</span><div><strong>Development workspace</strong><p>This is the initial interface foundation. Live records, sign-in and permissions will be connected after the database is configured.</p></div></div>
+        <div class="notice"><span class="notice-icon">i</span><div><strong>Database connected</strong><p>Your account is authenticated. Live rider, roster and event modules are being built and will appear here as they are completed.</p></div></div>
 
         <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Team snapshot</h2></div><span class="muted">Awaiting data connection</span></div>
         <div class="stats-grid">
