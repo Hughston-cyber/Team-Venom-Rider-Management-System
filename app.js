@@ -619,8 +619,15 @@ document.querySelector("#roster-import-form").addEventListener("submit", async e
       if (!row.scheduled_start || !row.scheduled_end) issues.push(`Row ${row.line}: start and end dates must be valid.`);
       else if (new Date(row.scheduled_end) <= new Date(row.scheduled_start)) issues.push(`Row ${row.line}: end must be after start.`);
     });
-    const sorted = [...rows].filter(row => row.rider_id && row.scheduled_start && row.scheduled_end).sort((a,b) => new Date(a.scheduled_start)-new Date(b.scheduled_start));
-    for (let i=1;i<sorted.length;i++) if (new Date(sorted[i].scheduled_start) < new Date(sorted[i-1].scheduled_end)) issues.push(`Stints ${sorted[i-1].stint_number} and ${sorted[i].stint_number} overlap.`);
+    const byRider = new Map();
+    rows.filter(row => row.rider_id && row.scheduled_start && row.scheduled_end).forEach(row => {
+      if (!byRider.has(row.rider_id)) byRider.set(row.rider_id, []);
+      byRider.get(row.rider_id).push(row);
+    });
+    byRider.forEach(riderRows => {
+      const sorted = riderRows.sort((a,b) => new Date(a.scheduled_start)-new Date(b.scheduled_start));
+      for (let i=1;i<sorted.length;i++) if (new Date(sorted[i].scheduled_start) < new Date(sorted[i-1].scheduled_end)) issues.push(`Rider ${sorted[i].rider_name} has overlapping stints ${sorted[i-1].stint_number} and ${sorted[i].stint_number}.`);
+    });
     if (issues.length) {
       report.hidden = false;
       const heading = document.createElement("strong"); heading.textContent = `Validation found ${issues.length} issue(s). No data was imported.`;
@@ -651,3 +658,5 @@ document.querySelector("#roster-import-form").addEventListener("submit", async e
   }
 });
 document.querySelector("#refresh-rosters").addEventListener("click", loadRosters);
+document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
+document.querySelector("#roster-import-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
