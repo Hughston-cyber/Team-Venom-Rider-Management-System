@@ -1,6 +1,6 @@
 const SUPABASE_URL = "https://xqfbmioydhuycvvkafwq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xPxK2aWz7gIkafxhiMIVGQ_mG77O6dD";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const authScreen = document.querySelector("#auth-screen");
 const appShell = document.querySelector("#app-shell");
@@ -57,7 +57,7 @@ document.querySelector("#menu-toggle").addEventListener("click", () => {
   document.querySelector("#sidebar").classList.toggle("open");
 });
 document.querySelector("#signout-button").addEventListener("click", async () => {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabaseClient.auth.signOut();
   if (error) showMessage("Sign out failed. Please try again.");
 });
 
@@ -164,7 +164,7 @@ document.querySelector("#rider-form").addEventListener("submit", async event => 
   submit.disabled = true;
   submit.textContent = "Saving…";
   message.textContent = "";
-  const { error } = await supabase.from("riders").insert(values);
+  const { error } = await supabaseClient.from("riders").insert(values);
   submit.disabled = false;
   submit.textContent = "Save rider";
   if (error) {
@@ -188,8 +188,8 @@ async function showAuthenticatedWorkspace(session) {
 
   const userId = session.user.id;
   const [profileResult, roleResult] = await Promise.all([
-    supabase.from("member_profiles").select("display_name,status").eq("user_id", userId).maybeSingle(),
-    supabase.from("member_roles").select("role").eq("user_id", userId)
+    supabaseClient.from("member_profiles").select("display_name,status").eq("user_id", userId).maybeSingle(),
+    supabaseClient.from("member_roles").select("role").eq("user_id", userId)
   ]);
 
   if (profileResult.error || roleResult.error) {
@@ -202,7 +202,7 @@ async function showAuthenticatedWorkspace(session) {
   const profile = profileResult.data;
   currentRoles = (roleResult.data || []).map(item => item.role);
   if (!profile || profile.status !== "active" || currentRoles.length === 0) {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     appShell.hidden = true;
     authScreen.hidden = false;
     showMessage("Your account is not yet authorised. Please contact a Team Venom administrator.");
@@ -223,7 +223,7 @@ loginForm.addEventListener("submit", async event => {
   showMessage("");
   const email = document.querySelector("#login-email").value.trim();
   const password = document.querySelector("#login-password").value;
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     showMessage("Sign-in failed. Check your email and password, then try again.");
   } else {
@@ -233,11 +233,11 @@ loginForm.addEventListener("submit", async event => {
   loginButton.innerHTML = 'Sign in <span>→</span>';
 });
 
-supabase.auth.onAuthStateChange((_event, session) => {
+supabaseClient.auth.onAuthStateChange((_event, session) => {
   setTimeout(() => showAuthenticatedWorkspace(session), 0);
 });
 
-supabase.auth.getSession().then(({ data, error }) => {
+supabaseClient.auth.getSession().then(({ data, error }) => {
   if (error) {
     showMessage("Unable to check your session. Please refresh and try again.");
     return;
