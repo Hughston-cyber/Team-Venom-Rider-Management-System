@@ -57,6 +57,7 @@
       </header>
 
       <section class="content">
+        <div id="overview-content">
         <div class="page-heading">
           <div><p class="eyebrow">TEAM OPERATIONS / 2026 SEASON</p><h1 id="page-title">Operations overview<span>.</span></h1><p class="subheading" id="page-description">Your central workspace for riders, rosters and race-day operations.</p></div>
           <div class="heading-actions"><span class="date-chip">SEASON 2026</span></div>
@@ -92,6 +93,42 @@
           </article>
         </div>
         <footer>TEAM VENOM <span>•</span> RIDER MANAGEMENT SYSTEM <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+        </div>
+        <div id="riders-content" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">TEAM DATABASE / PEOPLE</p><h1>Rider directory<span>.</span></h1><p class="subheading">View and manage authorised Team Venom rider records.</p></div>
+            <div class="heading-actions"><button class="primary-button" id="add-rider-toggle" type="button" hidden>+ Add rider</button></div>
+          </div>
+          <div class="rider-toolbar">
+            <input id="rider-search" type="search" placeholder="Search riders by name or number…" aria-label="Search riders">
+            <select id="rider-status-filter" aria-label="Filter by status">
+              <option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="retired">Retired</option>
+            </select>
+          </div>
+          <div class="rider-form panel" id="rider-form-panel" hidden>
+            <div class="panel-heading"><div><p class="eyebrow">NEW DATABASE RECORD</p><h2>Add a rider</h2></div><button class="text-button" id="cancel-add-rider" type="button">Cancel</button></div>
+            <form id="rider-form" class="rider-form-grid">
+              <label>First name<input name="first_name" required maxlength="80"></label>
+              <label>Last name<input name="last_name" required maxlength="80"></label>
+              <label>Preferred name <span class="muted">(optional)</span><input name="preferred_name" maxlength="80"></label>
+              <label>Rider number <span class="muted">(optional)</span><input name="rider_number" maxlength="30"></label>
+              <label>Status<select name="status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="retired">Retired</option></select></label>
+              <div class="form-actions"><button class="primary-button" id="save-rider-button" type="submit">Save rider</button></div>
+            </form>
+            <p class="inline-message" id="rider-form-message" role="status"></p>
+          </div>
+          <div class="rider-summary-row"><div><p class="eyebrow">REGISTERED PEOPLE</p><h2 id="rider-count">Loading riders…</h2></div><button class="text-button" id="refresh-riders" type="button">↻ Refresh</button></div>
+          <div class="panel rider-table-panel">
+            <div id="rider-loading" class="empty-state">Loading rider records from Supabase…</div>
+            <div id="rider-list" class="rider-list" hidden></div>
+            <div id="rider-empty" class="empty-state" hidden>No riders have been added yet.</div>
+            <div id="rider-error" class="empty-state error-state" hidden>Rider records could not be loaded. Please refresh or contact an administrator.</div>
+          </div>
+        </div>
+        <div id="module-placeholder" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / MODULE</p><h1 id="placeholder-title">Module<span>.</span></h1><p class="subheading" id="placeholder-description"></p></div></div>
+          <div class="panel placeholder-panel"><span class="live-indicator">IN DEVELOPMENT</span><h2>This module is being built</h2><p class="muted">The next development stage will connect this area to the live Team Venom database.</p></div>
+        </div>
       </section>
     </main>
   </div>
