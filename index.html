@@ -8,6 +8,7 @@
   <title>Team Venom | Rider Management</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -152,6 +153,47 @@
               <div class="profile-note-actions"><span id="private-notes-message" class="inline-message" role="status"></span><button class="primary-button" id="save-private-notes" type="button">Save notes</button></div>
             </section>
           </div>
+        </div>
+
+        <div id="rosters-content" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">TEAM OPERATIONS / SCHEDULING</p><h1>Roster management<span>.</span></h1><p class="subheading">Create race events, import Excel rosters, validate allocations and publish approved schedules.</p></div>
+            <div class="heading-actions"><button class="primary-button" id="new-event-toggle" type="button">+ New event</button></div>
+          </div>
+          <div class="roster-stats-grid">
+            <article class="stat-card"><div class="stat-label">RACE EVENTS</div><div class="stat-value" id="roster-event-count">—</div><div class="stat-foot">Events in the database</div></article>
+            <article class="stat-card"><div class="stat-label">ROSTERS</div><div class="stat-value" id="roster-count">—</div><div class="stat-foot">All roster versions</div></article>
+            <article class="stat-card"><div class="stat-label">SCHEDULED STINTS</div><div class="stat-value" id="roster-stint-count">—</div><div class="stat-foot">Across saved rosters</div></article>
+          </div>
+          <div class="panel roster-form-panel" id="event-form-panel" hidden>
+            <div class="panel-heading"><div><p class="eyebrow">EVENT SETUP</p><h2>Create race event</h2></div><button class="text-button" id="cancel-event" type="button">Cancel</button></div>
+            <form id="event-form" class="roster-form-grid">
+              <label>Event name<input name="event_name" required maxlength="120" placeholder="e.g. Maryborough 24 Hour"></label>
+              <label>Season year<input name="season_year" type="number" min="2020" max="2100" value="2026" required></label>
+              <label>Venue<input name="venue" maxlength="120" placeholder="e.g. Maryborough"></label>
+              <label>Event type<input name="event_type" maxlength="60" placeholder="e.g. Energy Breakthrough"></label>
+              <label>Start date<input name="start_date" type="date"></label>
+              <label>End date<input name="end_date" type="date"></label>
+              <div class="form-actions"><button class="primary-button" id="save-event" type="submit">Create event</button></div>
+            </form>
+            <p class="inline-message" id="event-message" role="status"></p>
+          </div>
+          <div class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">ROSTER WORKFLOW</p><h2>Import a roster</h2></div><span class="panel-tag">EXCEL / CSV</span></div>
+            <form id="roster-import-form">
+              <div class="roster-form-grid">
+                <label>Race event<select id="roster-event-select" name="event_id" required><option value="">Select an event…</option></select></label>
+                <label>Roster file<input id="roster-file" name="roster_file" type="file" accept=".xlsx,.xls,.csv" required></label>
+                <label>Roster version<input id="roster-version" name="version_number" type="number" min="1" value="1" required></label>
+              </div>
+              <div class="roster-help"><strong>Expected spreadsheet columns</strong><span>stint_number · rider_name · scheduled_start · scheduled_end · roster_notes (optional)</span><small>Use full rider names matching the Rider Directory. Dates should include a time, for example 2026-11-19 12:00.</small></div>
+              <div class="roster-actions"><button class="text-button" id="download-roster-template" type="button">↓ Download CSV template</button><button class="primary-button" id="validate-roster" type="submit">Validate &amp; import roster</button></div>
+            </form>
+            <div id="roster-import-message" class="inline-message" role="status" aria-live="polite"></div>
+            <div id="roster-validation" class="roster-validation" hidden></div>
+          </div>
+          <div class="roster-summary-row"><div><p class="eyebrow">SAVED SCHEDULES</p><h2>Events and rosters</h2></div><button class="text-button" id="refresh-rosters" type="button">↻ Refresh</button></div>
+          <div class="panel roster-table-panel"><div id="roster-loading" class="empty-state">Loading roster records…</div><div id="roster-list" hidden></div><div id="roster-empty" class="empty-state" hidden>No race events or rosters have been created yet. Start by creating an event.</div><div id="roster-error" class="empty-state error-state" hidden>Roster data could not be loaded. Refresh or contact an administrator.</div></div>
         </div>
         <div id="module-placeholder" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / MODULE</p><h1 id="placeholder-title">Module<span>.</span></h1><p class="subheading" id="placeholder-description"></p></div></div>
