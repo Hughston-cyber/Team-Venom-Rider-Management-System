@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b09">
+  <meta name="description" content="Team Venom Rider Management System">
+  <title>Team Venom | Rider Management</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Team Venom home">
+        <span class="brand-mark">V</span>
+        <span><strong>TEAM <em>VENOM</em></strong><small>RIDER OPERATIONS</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-link active" data-view="overview"><span>▦</span> Overview</button>
+        <button class="nav-link" data-view="riders"><span>♙</span> Riders</button>
+        <button class="nav-link" data-view="rosters"><span>▤</span> Rosters</button>
+        <button class="nav-link" data-view="race-day"><span>◷</span> Race day</button>
+        <button class="nav-link" data-view="performance"><span>↗</span> Performance</button>
+        <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="system-status"><span class="status-dot"></span><span><strong>System workspace</strong><small>Initial setup</small></span></div>
+        <button class="nav-link" data-view="settings"><span>⚙</span> Settings</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="menu-toggle" aria-label="Toggle navigation">☰</button>
+        <div class="breadcrumb">TEAM VENOM <span>/</span> <strong id="breadcrumb-current">OVERVIEW</strong></div>
+        <div class="topbar-right"><span class="environment">DEVELOPMENT</span><div class="avatar" title="Administrator workspace">TV</div></div>
+      </header>
+
+      <section class="content">
+        <div class="page-heading">
+          <div><p class="eyebrow">TEAM OPERATIONS / 2026 SEASON</p><h1 id="page-title">Operations overview<span>.</span></h1><p class="subheading" id="page-description">Your central workspace for riders, rosters and race-day operations.</p></div>
+          <div class="heading-actions"><span class="date-chip">SEASON 2026</span></div>
+        </div>
+
+        <div class="notice"><span class="notice-icon">i</span><div><strong>Development workspace</strong><p>This is the initial interface foundation. Live records, sign-in and permissions will be connected after the database is configured.</p></div></div>
+
+        <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Team snapshot</h2></div><span class="muted">Awaiting data connection</span></div>
+        <div class="stats-grid">
+          <article class="stat-card"><div class="stat-label">REGISTERED RIDERS <span>♙</span></div><div class="stat-value">—</div><div class="stat-foot">Database not connected</div></article>
+          <article class="stat-card"><div class="stat-label">UPCOMING EVENTS <span>▣</span></div><div class="stat-value">—</div><div class="stat-foot">No event data loaded</div></article>
+          <article class="stat-card"><div class="stat-label">ROSTERED STINTS <span>◷</span></div><div class="stat-value">—</div><div class="stat-foot">No roster uploaded</div></article>
+          <article class="stat-card"><div class="stat-label">SYSTEM ALERTS <span>!</span></div><div class="stat-value">—</div><div class="stat-foot">Notifications not connected</div></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Quick access</h2></div><span class="panel-tag">CORE MODULES</span></div>
+            <div class="quick-grid">
+              <button class="quick-card" data-view="riders"><span class="quick-icon">♙</span><strong>Rider directory</strong><small>Profiles, details and eligibility</small><b>→</b></button>
+              <button class="quick-card" data-view="rosters"><span class="quick-icon">▤</span><strong>Roster management</strong><small>Upload, review and allocate stints</small><b>→</b></button>
+              <button class="quick-card" data-view="race-day"><span class="quick-icon">◷</span><strong>Race-day control</strong><small>Track stints and attendance</small><b>→</b></button>
+              <button class="quick-card" data-view="performance"><span class="quick-icon">↗</span><strong>Performance centre</strong><small>Review team and rider statistics</small><b>→</b></button>
+            </div>
+          </article>
+          <article class="panel build-panel">
+            <div class="panel-heading"><div><p class="eyebrow">PROJECT STATUS</p><h2>Build progress</h2></div><span class="live-indicator">IN DEVELOPMENT</span></div>
+            <div class="progress-row"><span>Interface foundation</span><strong>Started</strong></div><div class="progress-track"><span style="width:100%"></span></div>
+            <div class="progress-row"><span>Database architecture</span><strong>Next stage</strong></div><div class="progress-track"><span style="width:8%"></span></div>
+            <div class="progress-row"><span>Authentication &amp; roles</span><strong>Pending</strong></div><div class="progress-track"><span style="width:0%"></span></div>
+            <div class="progress-row"><span>Roster &amp; race operations</span><strong>Pending</strong></div><div class="progress-track"><span style="width:0%"></span></div>
+            <p class="build-note">No real rider information is stored in this prototype.</p>
+          </article>
+        </div>
+        <footer>TEAM VENOM <span>•</span> RIDER MANAGEMENT SYSTEM <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
