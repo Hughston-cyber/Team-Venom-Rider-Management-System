@@ -124,7 +124,7 @@ async function loadRiders() {
   list.hidden = true;
   empty.hidden = true;
   errorBox.hidden = true;
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("riders")
     .select("id,rider_number,first_name,last_name,preferred_name,status")
     .order("last_name", { ascending: true });
