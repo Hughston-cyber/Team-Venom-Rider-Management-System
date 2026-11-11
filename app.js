@@ -398,6 +398,8 @@ async function showAuthenticatedWorkspace(session) {
   document.querySelector("#account-name").textContent = profile.display_name || "Team member";
   document.querySelector("#account-role").textContent = currentRoles[0].toUpperCase();
   document.querySelector("#add-rider-toggle").hidden = !canManageRiders();
+  document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
+  document.querySelector("#roster-import-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
   appShell.hidden = false;
   authScreen.hidden = true;
 }
