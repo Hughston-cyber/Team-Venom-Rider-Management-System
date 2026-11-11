@@ -94,9 +94,18 @@ function renderRiders() {
       : `${rider.first_name} ${rider.last_name}`;
     const identity = document.createElement("div");
     identity.className = "rider-identity";
-    const avatar = document.createElement("span");
-    avatar.className = "rider-avatar";
-    avatar.textContent = initials;
+    let avatar;
+    if (rider.photo_url) {
+      avatar = document.createElement("img");
+      avatar.className = "rider-avatar rider-photo";
+      avatar.src = rider.photo_url;
+      avatar.alt = `${displayName} profile photograph`;
+      avatar.loading = "lazy";
+    } else {
+      avatar = document.createElement("span");
+      avatar.className = "rider-avatar";
+      avatar.textContent = initials;
+    }
     const nameBlock = document.createElement("div");
     const name = document.createElement("strong");
     name.textContent = displayName;
@@ -126,7 +135,7 @@ async function loadRiders() {
   errorBox.hidden = true;
   const { data, error } = await supabaseClient
     .from("riders")
-    .select("id,rider_number,first_name,last_name,preferred_name,status")
+    .select("id,rider_number,first_name,last_name,preferred_name,status,photo_path")
     .order("last_name", { ascending: true });
   loading.hidden = true;
   if (error) {
@@ -134,7 +143,11 @@ async function loadRiders() {
     document.querySelector("#rider-count").textContent = "Unable to load records";
     return;
   }
-  ridersCache = data || [];
+  ridersCache = await Promise.all((data || []).map(async rider => {
+    if (!rider.photo_path) return rider;
+    const { data: signed, error: photoError } = await supabaseClient.storage.from("rider-photos").createSignedUrl(rider.photo_path, 3600);
+    return { ...rider, photo_url: photoError ? null : signed.signedUrl };
+  }));
   renderRiders();
 }
 
@@ -157,24 +170,59 @@ document.querySelector("#rider-form").addEventListener("submit", async event => 
   const submit = document.querySelector("#save-rider-button");
   const message = document.querySelector("#rider-form-message");
   const values = Object.fromEntries(new FormData(form).entries());
+  const photo = values.photo;
+  delete values.photo;
   values.first_name = values.first_name.trim();
   values.last_name = values.last_name.trim();
   values.preferred_name = values.preferred_name.trim() || null;
   values.rider_number = values.rider_number.trim() || null;
+  if (photo && photo.size) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(photo.type) || photo.size > 5 * 1024 * 1024) {
+      message.textContent = "Choose a JPEG, PNG or WebP image no larger than 5 MB.";
+      message.className = "inline-message error-state";
+      return;
+    }
+  }
   submit.disabled = true;
   submit.textContent = "Saving…";
   message.textContent = "";
-  const { error } = await supabaseClient.from("riders").insert(values);
-  submit.disabled = false;
-  submit.textContent = "Save rider";
-  if (error) {
+  const { data: inserted, error: insertError } = await supabaseClient.from("riders").insert(values).select("id").single();
+  if (insertError || !inserted) {
+    submit.disabled = false;
+    submit.textContent = "Save rider";
     message.textContent = "The rider could not be saved. Check your access or try again.";
     message.className = "inline-message error-state";
     return;
   }
+  if (photo && photo.size) {
+    const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
+    const photoPath = `${inserted.id}/profile-${Date.now()}.${extension}`;
+    const { error: uploadError } = await supabaseClient.storage.from("rider-photos").upload(photoPath, photo, { contentType: photo.type, upsert: false });
+    if (uploadError) {
+      await supabaseClient.from("riders").delete().eq("id", inserted.id);
+      submit.disabled = false;
+      submit.textContent = "Save rider";
+      message.textContent = "The rider photo could not be uploaded, so the rider record was not kept. Please try again.";
+      message.className = "inline-message error-state";
+      return;
+    }
+    const { error: photoSaveError } = await supabaseClient.from("riders").update({ photo_path: photoPath }).eq("id", inserted.id);
+    if (photoSaveError) {
+      await supabaseClient.storage.from("rider-photos").remove([photoPath]);
+      await supabaseClient.from("riders").delete().eq("id", inserted.id);
+      submit.disabled = false;
+      submit.textContent = "Save rider";
+      message.textContent = "The photo could not be linked to the rider. Nothing was saved; please try again.";
+      message.className = "inline-message error-state";
+      return;
+    }
+  }
+  submit.disabled = false;
+  submit.textContent = "Save rider";
   form.reset();
   document.querySelector("#rider-form-panel").hidden = true;
-  message.textContent = "Rider added successfully.";
+  message.textContent = photo && photo.size ? "Rider and photograph added successfully." : "Rider added successfully.";
   message.className = "inline-message success-message";
   await loadRiders();
 });
