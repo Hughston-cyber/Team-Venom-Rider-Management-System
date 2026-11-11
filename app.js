@@ -444,33 +444,102 @@ function rosterCanManage() {
   return currentRoles.some(role => ["administrator", "manager"].includes(role));
 }
 
-function rosterMessage(message, isError = false) {
-  const box = document.querySelector("#roster-import-message");
+function setRosterMessage(selector, message, isError = false) {
+  const box = document.querySelector(selector);
+  if (!box) return;
   box.textContent = message;
   box.className = isError ? "inline-message error-state" : "inline-message";
 }
 
-async function loadManualRosterOptions() {
-  const select = document.querySelector("#manual-roster-select");
+function displayRiderName(rider) {
+  return rider.preferred_name
+    ? `${rider.preferred_name} ${rider.last_name}`
+    : `${rider.first_name} ${rider.last_name}`;
+}
+
+function populateEventSelect() {
+  const select = document.querySelector("#manual-event-select");
   const selected = select.value;
+  select.replaceChildren(new Option("Select an event…", ""));
+  rosterEvents.forEach(item => {
+    const details = [item.season_year, item.venue].filter(Boolean).join(" · ");
+    select.add(new Option(details ? `${item.event_name} · ${details}` : item.event_name, item.id));
+  });
+  if (rosterEvents.some(item => item.id === selected)) select.value = selected;
+}
+
+function populateManualRiderSelect() {
+  const select = document.querySelector("#manual-rider-select");
+  const selected = select.value;
+  select.replaceChildren(new Option("Choose a rider…", ""));
+  rosterRiders.forEach(rider => select.add(new Option(displayRiderName(rider), rider.id)));
+  if (rosterRiders.some(item => item.id === selected)) select.value = selected;
+}
+
+function populateManualRosterSelect(preferredId = null) {
+  const select = document.querySelector("#manual-roster-select");
+  const selected = preferredId || select.value;
   select.replaceChildren(new Option("Select a draft roster…", ""));
   rosterRecords.filter(roster => roster.status === "draft").forEach(roster => {
     const event = rosterEvents.find(item => item.id === roster.event_id);
     select.add(new Option(`${event?.event_name || "Race event"} · Version ${roster.version_number}`, roster.id));
   });
   if (rosterRecords.some(roster => roster.id === selected && roster.status === "draft")) select.value = selected;
-  await loadManualStints();
+  document.querySelector("#manual-stint-form").elements.roster_id.value = select.value;
+}
+
+function renderRosterRecords() {
+  const list = document.querySelector("#roster-list");
+  const empty = document.querySelector("#roster-empty");
+  list.replaceChildren();
+  const eventsWithRosters = rosterEvents.map(event => ({
+    event,
+    rosters: rosterRecords.filter(roster => roster.event_id === event.id)
+  })).filter(group => group.rosters.length);
+  document.querySelector("#roster-event-count").textContent = rosterEvents.length.toLocaleString("en-AU");
+  document.querySelector("#roster-count").textContent = rosterRecords.length.toLocaleString("en-AU");
+  list.hidden = false;
+  empty.hidden = true;
+  if (!eventsWithRosters.length) {
+    list.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+  eventsWithRosters.forEach(group => {
+    const section = document.createElement("article");
+    section.className = "roster-event-row";
+    const heading = document.createElement("div");
+    heading.className = "roster-event-heading";
+    const name = document.createElement("strong");
+    name.textContent = group.event.event_name;
+    const meta = document.createElement("small");
+    meta.textContent = [group.event.season_year, group.event.venue, group.event.status].filter(Boolean).join(" · ");
+    heading.append(name, meta);
+    section.append(heading);
+    group.rosters.forEach(roster => {
+      const row = document.createElement("div");
+      row.className = "roster-version-row";
+      const info = document.createElement("span");
+      info.textContent = `Version ${roster.version_number} · ${roster.status.toUpperCase()} · ${new Date(roster.created_at).toLocaleDateString("en-AU")}`;
+      row.append(info);
+      section.append(row);
+    });
+    list.append(section);
+  });
 }
 
 async function loadManualStints() {
   const rosterId = document.querySelector("#manual-roster-select").value;
+  const form = document.querySelector("#manual-stint-form");
   const list = document.querySelector("#manual-stint-list");
   const empty = document.querySelector("#manual-stint-empty");
   list.replaceChildren();
   empty.hidden = true;
+  form.elements.roster_id.value = rosterId;
   if (!rosterId) {
     empty.hidden = false;
     empty.textContent = "Select a draft roster to view or add its stints.";
+    form.elements.stint_number.value = 1;
     return;
   }
   const { data, error } = await supabaseClient
@@ -483,34 +552,46 @@ async function loadManualStints() {
     empty.textContent = "Stints could not be loaded. Please refresh and try again.";
     return;
   }
+  document.querySelector("#roster-stint-count").textContent = "…";
   if (!data?.length) {
     empty.hidden = false;
     empty.textContent = "No stints have been added to this draft yet.";
+    form.elements.stint_number.value = 1;
     return;
   }
+  const nextNumber = Math.max(...data.map(item => Number(item.stint_number))) + 1;
+  form.elements.stint_number.value = nextNumber;
   data.forEach(stint => {
     const rider = rosterRiders.find(item => item.id === stint.rider_id);
     const row = document.createElement("article");
-    row.className = "roster-version-row";
-    const info = document.createElement("span");
-    const name = rider ? (rider.preferred_name ? `${rider.preferred_name} ${rider.last_name}` : `${rider.first_name} ${rider.last_name}`) : "Unknown rider";
-    const start = stint.scheduled_start ? new Date(stint.scheduled_start).toLocaleString("en-AU") : "No start";
-    const end = stint.scheduled_end ? new Date(stint.scheduled_end).toLocaleString("en-AU") : "No end";
-    info.textContent = `Stint ${stint.stint_number} · ${name} · ${start} – ${end}${stint.roster_notes ? " · " + stint.roster_notes : ""}`;
+    row.className = "manual-stint-row";
+    const info = document.createElement("div");
+    info.className = "manual-stint-info";
+    const title = document.createElement("strong");
+    title.textContent = `Stint ${stint.stint_number} · ${rider ? displayRiderName(rider) : "Unknown rider"}`;
+    const times = document.createElement("small");
+    times.textContent = `${new Date(stint.scheduled_start).toLocaleString("en-AU")} – ${new Date(stint.scheduled_end).toLocaleString("en-AU")}`;
+    info.append(title, times);
+    if (stint.roster_notes) {
+      const notes = document.createElement("small");
+      notes.textContent = stint.roster_notes;
+      info.append(notes);
+    }
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "text-button";
     remove.textContent = "Remove";
+    remove.disabled = !rosterCanManage();
     remove.addEventListener("click", async () => {
       if (!rosterCanManage()) return;
       remove.disabled = true;
       const { error: deleteError } = await supabaseClient.from("roster_stints").delete().eq("id", stint.id);
       if (deleteError) {
-        rosterMessage("That stint could not be removed. Check your access and try again.", true);
+        setRosterMessage("#manual-stint-message", "That stint could not be removed. Check your access and try again.", true);
         remove.disabled = false;
         return;
       }
-      rosterMessage(`Stint ${stint.stint_number} removed from the draft.`);
+      setRosterMessage("#manual-stint-message", `Stint ${stint.stint_number} removed from the draft.`);
       await loadManualStints();
       await loadRosters();
     });
@@ -519,14 +600,87 @@ async function loadManualStints() {
   });
 }
 
-function populateManualRiderSelect() {
-  const select = document.querySelector("#manual-rider-select");
-  select.replaceChildren(new Option("Choose a rider…", ""));
-  rosterRiders.forEach(rider => {
-    const name = rider.preferred_name ? `${rider.preferred_name} ${rider.last_name}` : `${rider.first_name} ${rider.last_name}`;
-    select.add(new Option(name, rider.id));
-  });
+async function loadRosters() {
+  const loading = document.querySelector("#roster-loading");
+  const list = document.querySelector("#roster-list");
+  const empty = document.querySelector("#roster-empty");
+  const errorBox = document.querySelector("#roster-error");
+  loading.hidden = false;
+  list.hidden = true;
+  empty.hidden = true;
+  errorBox.hidden = true;
+  const [eventsResult, rostersResult, ridersResult, stintsResult] = await Promise.all([
+    supabaseClient.from("race_events").select("id,event_name,season_year,venue,event_type,start_date,end_date,status,created_at").order("start_date", { ascending: false }),
+    supabaseClient.from("rosters").select("id,event_id,version_number,status,created_at,published_at").order("created_at", { ascending: false }),
+    supabaseClient.from("riders").select("id,first_name,last_name,preferred_name,status").eq("status", "active").order("last_name", { ascending: true }),
+    supabaseClient.from("roster_stints").select("id", { count: "exact", head: true })
+  ]);
+  loading.hidden = true;
+  if (eventsResult.error || rostersResult.error || ridersResult.error || stintsResult.error) {
+    errorBox.hidden = false;
+    document.querySelector("#roster-event-count").textContent = "—";
+    document.querySelector("#roster-count").textContent = "—";
+    document.querySelector("#roster-stint-count").textContent = "—";
+    return;
+  }
+  rosterEvents = eventsResult.data || [];
+  rosterRecords = rostersResult.data || [];
+  rosterRiders = ridersResult.data || [];
+  document.querySelector("#roster-stint-count").textContent = (stintsResult.count ?? 0).toLocaleString("en-AU");
+  populateEventSelect();
+  populateManualRiderSelect();
+  populateManualRosterSelect();
+  renderRosterRecords();
+  await loadManualStints();
 }
+
+document.querySelector("#new-event-toggle").addEventListener("click", () => {
+  document.querySelector("#event-form-panel").hidden = false;
+  document.querySelector("#event-form").elements.event_name.focus();
+});
+document.querySelector("#cancel-event").addEventListener("click", () => {
+  document.querySelector("#event-form-panel").hidden = true;
+  document.querySelector("#event-form").reset();
+  setRosterMessage("#event-message", "");
+});
+
+document.querySelector("#event-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!rosterCanManage()) return;
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form).entries());
+  const startDate = values.start_date || null;
+  const endDate = values.end_date || null;
+  const message = document.querySelector("#event-message");
+  const button = document.querySelector("#save-event");
+  if (startDate && endDate && endDate < startDate) {
+    setRosterMessage("#event-message", "The event end date must be on or after its start date.", true);
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Creating…";
+  const { data: authData } = await supabaseClient.auth.getUser();
+  const { error } = await supabaseClient.from("race_events").insert({
+    event_name: values.event_name.trim(),
+    season_year: Number(values.season_year),
+    venue: values.venue.trim() || null,
+    event_type: values.event_type.trim() || null,
+    start_date: startDate,
+    end_date: endDate,
+    created_by: authData.user?.id
+  });
+  button.disabled = false;
+  button.textContent = "Create event";
+  if (error) {
+    setRosterMessage("#event-message", "The event could not be saved. Check your access and try again.", true);
+    return;
+  }
+  form.reset();
+  form.elements.season_year.value = new Date().getFullYear();
+  document.querySelector("#event-form-panel").hidden = true;
+  setRosterMessage("#event-message", "Race event created successfully.");
+  await loadRosters();
+});
 
 document.querySelector("#create-manual-roster-form").addEventListener("submit", async event => {
   event.preventDefault();
@@ -535,46 +689,43 @@ document.querySelector("#create-manual-roster-form").addEventListener("submit", 
   const values = Object.fromEntries(new FormData(form).entries());
   const eventId = values.event_id;
   const version = Number(values.version_number);
-  const message = document.querySelector("#manual-roster-message");
-  const button = document.querySelector("#create-manual-roster");
   if (!eventId || !Number.isInteger(version) || version < 1) {
-    message.textContent = "Choose an event and a valid version number.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-roster-message", "Choose an event and a valid version number.", true);
     return;
   }
   const existing = rosterRecords.filter(item => item.event_id === eventId).map(item => Number(item.version_number));
   if (existing.includes(version)) {
-    message.textContent = `Version ${version} already exists. Choose version ${Math.max(...existing) + 1}.`;
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-roster-message", `Version ${version} already exists. Choose version ${Math.max(...existing) + 1}.`, true);
     return;
   }
+  const button = document.querySelector("#create-manual-roster");
   button.disabled = true;
   button.textContent = "Creating draft…";
-  const user = (await supabaseClient.auth.getUser()).data.user;
+  const { data: authData } = await supabaseClient.auth.getUser();
   const { data, error } = await supabaseClient.from("rosters").insert({
     event_id: eventId,
     version_number: version,
     status: "draft",
     source_filename: "Manual entry",
-    uploaded_by: user?.id
+    uploaded_by: authData.user?.id
   }).select("id").single();
   button.disabled = false;
   button.textContent = "Create draft roster";
   if (error || !data) {
-    message.textContent = "The draft roster could not be created. Check your permissions and try again.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-roster-message", "The draft roster could not be created. Check your permissions and try again.", true);
     return;
   }
-  form.reset();
+  form.elements.version_number.value = Math.max(...existing, version) + 1;
   await loadRosters();
   document.querySelector("#manual-roster-select").value = data.id;
   await loadManualStints();
-  message.textContent = "Draft roster created. You can now add stints individually.";
-  message.className = "inline-message success-message";
+  setRosterMessage("#manual-roster-message", "Draft roster created. You can now add stints individually.");
 });
 
-document.querySelector("#manual-roster-select").addEventListener("change", loadManualStints);
-
+document.querySelector("#manual-roster-select").addEventListener("change", async event => {
+  document.querySelector("#manual-stint-form").elements.roster_id.value = event.target.value;
+  await loadManualStints();
+});
 document.querySelector("#manual-stint-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (!rosterCanManage()) return;
@@ -584,30 +735,25 @@ document.querySelector("#manual-stint-form").addEventListener("submit", async ev
   const stintNumber = Number(values.stint_number);
   const start = new Date(values.scheduled_start);
   const end = new Date(values.scheduled_end);
-  const message = document.querySelector("#manual-stint-message");
-  const button = document.querySelector("#save-manual-stint");
   if (!rosterId || !values.rider_id || !Number.isInteger(stintNumber) || stintNumber < 1 || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
-    message.textContent = "Complete all required fields and make sure the end time is after the start time.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-stint-message", "Complete all required fields and make sure the end time is after the start time.", true);
     return;
   }
   const { data: existing, error: existingError } = await supabaseClient.from("roster_stints").select("stint_number,rider_id,scheduled_start,scheduled_end").eq("roster_id", rosterId);
   if (existingError) {
-    message.textContent = "Existing stints could not be checked. Please try again.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-stint-message", "Existing stints could not be checked. Please try again.", true);
     return;
   }
   if ((existing || []).some(item => Number(item.stint_number) === stintNumber)) {
-    message.textContent = `Stint number ${stintNumber} is already in this roster.`;
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-stint-message", `Stint number ${stintNumber} is already in this roster.`, true);
     return;
   }
   const conflict = (existing || []).find(item => item.rider_id === values.rider_id && start < new Date(item.scheduled_end) && end > new Date(item.scheduled_start));
   if (conflict) {
-    message.textContent = "This rider already has a stint that overlaps with the selected time.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-stint-message", "This rider already has a stint that overlaps with the selected time.", true);
     return;
   }
+  const button = document.querySelector("#save-manual-stint");
   button.disabled = true;
   button.textContent = "Saving…";
   const { error } = await supabaseClient.from("roster_stints").insert({
@@ -621,21 +767,22 @@ document.querySelector("#manual-stint-form").addEventListener("submit", async ev
   button.disabled = false;
   button.textContent = "Add stint";
   if (error) {
-    message.textContent = "The stint could not be saved. Check your access and try again.";
-    message.className = "inline-message error-state";
+    setRosterMessage("#manual-stint-message", "The stint could not be saved. Check your access and try again.", true);
     return;
   }
-  const nextNumber = stintNumber + 1;
-  form.reset();
-  form.elements.roster_id.value = rosterId;
-  form.elements.stint_number.value = nextNumber;
-  message.textContent = `Stint ${stintNumber} saved successfully.`;
-  message.className = "inline-message success-message";
+  form.elements.stint_number.value = stintNumber + 1;
+  form.elements.rider_id.value = "";
+  form.elements.scheduled_start.value = "";
+  form.elements.scheduled_end.value = "";
+  form.elements.roster_notes.value = "";
+  setRosterMessage("#manual-stint-message", `Stint ${stintNumber} saved successfully.`);
   await loadManualStints();
   await loadRosters();
   document.querySelector("#manual-roster-select").value = rosterId;
+  form.elements.roster_id.value = rosterId;
 });
 
-document.querySelector("#refresh-rosters").addEventListener("click", async () => { await loadRosters(); await loadManualStints(); });
+document.querySelector("#refresh-rosters").addEventListener("click", loadRosters);
 document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
-document.querySelector("#roster-import-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
+document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
+document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
