@@ -113,6 +113,7 @@
               <label>Preferred name <span class="muted">(optional)</span><input name="preferred_name" maxlength="80"></label>
               <label>Rider number <span class="muted">(optional)</span><input name="rider_number" maxlength="30"></label>
               <label>Status<select name="status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="retired">Retired</option></select></label>
+              <label class="photo-upload-field">Rider photograph <span class="muted">(JPEG, PNG or WebP · max 5 MB)</span><input name="photo" id="rider-photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
               <div class="form-actions"><button class="primary-button" id="save-rider-button" type="submit">Save rider</button></div>
             </form>
             <p class="inline-message" id="rider-form-message" role="status"></p>
