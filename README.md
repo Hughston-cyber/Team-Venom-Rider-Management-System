@@ -13,7 +13,7 @@ Private Team Venom operations workspace built with HTML, CSS, JavaScript and Sup
 - Rider photo upload to the private `rider-photos` storage bucket
 - Race event creation and manually built roster versions
 - Individual stint allocation with duplicate-number and same-rider overlap checks
-- Draft roster review and removal of individual stints
+- Draft roster review, publishing and removal of individual stints
 - Race-day entry for actual stint times, laps, best lap and notes
 - Performance summary and rider lap leaderboard
 - In-app notifications and manager announcements
