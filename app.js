@@ -148,7 +148,6 @@ async function openRiderProfile(riderId) {
   document.querySelector("#overview-content").hidden = true;
   document.querySelector("#riders-content").hidden = true;
   document.querySelector("#rosters-content").hidden = true;
-  document.querySelector("#module-placeholder").hidden = true;
   document.querySelector("#rider-profile-content").hidden = false;
   document.querySelector("#breadcrumb-current").textContent = "RIDERS / PROFILE";
   document.querySelectorAll("[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === "riders"));
