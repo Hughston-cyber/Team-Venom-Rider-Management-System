@@ -49,3 +49,7 @@
 .manual-stint-info strong{font-size:11px}
 .manual-stint-info small{font-size:10px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:550px){.manual-stint-row{align-items:flex-start;flex-direction:column}.manual-stint-row .text-button{align-self:flex-end}}
+
+/* Complete beta modules */
+.record-list{display:grid}.record-row{display:grid;gap:6px;padding:14px 3px;border-bottom:1px solid var(--line)}.record-row:last-child{border-bottom:0}.record-row strong{font-size:12px}.record-row small{font-size:10px;color:var(--muted);line-height:1.5}.record-row p{font-size:11px;line-height:1.6;color:#cbd4cd;margin:0}.record-row .text-button{justify-self:start;margin-top:4px}.record-unread{border-left:2px solid var(--green);padding-left:12px;background:#111a12}.announcement-message-field{grid-column:span 2}.settings-detail{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font-size:11px}.settings-detail span{color:var(--muted)}.settings-detail strong{text-align:right;overflow-wrap:anywhere}.preferences-form{display:grid;gap:15px}.preferences-form label{display:grid;grid-template-columns:18px 1fr;gap:9px;align-items:start;font-size:11px;color:#cbd4cd}.preferences-form input{accent-color:var(--green);margin:1px 0 0}.preferences-form small{grid-column:2;color:var(--muted);font-size:9px;line-height:1.4;margin-top:-5px}
+@media(max-width:750px){.announcement-message-field{grid-column:auto}.settings-detail{align-items:flex-start;flex-direction:column}.settings-detail strong{text-align:left}}
