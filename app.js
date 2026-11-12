@@ -806,6 +806,9 @@ function setModuleMessage(id, message, error = false) {
 function canManageOperations() {
   return currentRoles.some(role => ["administrator","manager"].includes(role));
 }
+function canManageNotifications() {
+  return currentRoles.includes("administrator");
+}
 function safeNumber(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 }
@@ -867,7 +870,6 @@ async function loadRaceDay() {
     list.append(row);
   });
   document.querySelector("#race-record-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!canManageOperations();});
-  document.querySelector("#race-record-form").addEventListener("submit", saveRaceRecord, {once:true});
 }
 async function saveRaceRecord(event) {
   event.preventDefault();
@@ -929,17 +931,20 @@ async function loadNotifications() {
     if(!item.read_at){const button=document.createElement("button");button.type="button";button.className="text-button";button.textContent="Mark as read";button.addEventListener("click",async()=>{const {error:markError}=await supabaseClient.from("notifications").update({read_at:new Date().toISOString(),status:"read"}).eq("id",item.id);if(markError){setModuleMessage("#announcement-message","Could not update notification.",true);}else await loadNotifications();});row.append(button);}
     list.append(row);
   });
-  document.querySelector("#announcement-panel").hidden=!canManageOperations();
-  document.querySelector("#announcement-form").querySelectorAll("input,button").forEach(control=>{control.disabled=!canManageOperations();});
+  document.querySelector("#announcement-panel").hidden=!canManageNotifications();
+  document.querySelector("#announcement-form").querySelectorAll("input,button").forEach(control=>{control.disabled=!canManageNotifications();});
 }
 async function sendAnnouncement(event) {
-  event.preventDefault();if(!canManageOperations())return;
+  event.preventDefault();if(!canManageNotifications())return;
   const form=event.currentTarget;const values=Object.fromEntries(new FormData(form).entries());
   const button=document.querySelector("#send-announcement");button.disabled=true;button.textContent="Sending…";
-  const {error}=await supabaseClient.from("notifications").insert({recipient_user_id:null,title:values.title.trim(),message:values.message.trim(),channel:"in_app",status:"sent",sent_at:new Date().toISOString()});
+  const {data:members,error:membersError}=await supabaseClient.from("member_profiles").select("user_id").eq("status","active");
+  if(membersError||!members?.length){button.disabled=false;button.textContent="Send announcement";setModuleMessage("#announcement-message","Active team members could not be loaded. No announcement was sent.",true);return;}
+  const payload=members.map(member=>({recipient_user_id:member.user_id,title:values.title.trim(),message:values.message.trim(),channel:"in_app",status:"sent",sent_at:new Date().toISOString()}));
+  const {error}=await supabaseClient.from("notifications").insert(payload);
   button.disabled=false;button.textContent="Send announcement";
   if(error){setModuleMessage("#announcement-message","Announcement could not be saved: "+error.message,true);return;}
-  form.reset();setModuleMessage("#announcement-message","Announcement posted to the in-app inbox.");await loadNotifications();await loadOverview();
+  form.reset();setModuleMessage("#announcement-message","Announcement delivered to "+members.length+" active member inbox(es).");await loadNotifications();await loadOverview();
 }
 async function loadSettings() {
   if(!currentProfile||!currentUser)return;
@@ -959,6 +964,7 @@ async function savePreferences(event) {
   button.disabled=false;button.textContent="Save preferences";
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
 }
+document.querySelector("#race-record-form").addEventListener("submit",saveRaceRecord);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
 document.querySelector("#refresh-performance").addEventListener("click",loadPerformance);
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
