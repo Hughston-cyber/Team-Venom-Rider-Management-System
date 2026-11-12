@@ -45,7 +45,6 @@ function selectView(view) {
     if (node) node.hidden = view !== name;
   });
   document.querySelector("#rider-profile-content").hidden = true;
-  document.querySelector("#module-placeholder").hidden = true;
   document.querySelector("#sidebar").classList.remove("open");
   if (view === "overview") loadOverview();
   if (view === "riders") loadRiders();
