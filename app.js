@@ -500,7 +500,7 @@ function renderRosterRecords() {
   const eventsWithRosters = rosterEvents.map(event => ({
     event,
     rosters: rosterRecords.filter(roster => roster.event_id === event.id)
-  })).filter(group => group.rosters.length);
+  }));
   document.querySelector("#roster-event-count").textContent = rosterEvents.length.toLocaleString("en-AU");
   document.querySelector("#roster-count").textContent = rosterRecords.length.toLocaleString("en-AU");
   list.hidden = false;
@@ -521,12 +521,37 @@ function renderRosterRecords() {
     meta.textContent = [group.event.season_year, group.event.venue, group.event.status].filter(Boolean).join(" · ");
     heading.append(name, meta);
     section.append(heading);
+    if (!group.rosters.length) {
+      const noRoster = document.createElement("p");
+      noRoster.className = "roster-no-version";
+      noRoster.textContent = "No roster version has been created for this event yet.";
+      section.append(noRoster);
+    }
     group.rosters.forEach(roster => {
       const row = document.createElement("div");
       row.className = "roster-version-row";
       const info = document.createElement("span");
       info.textContent = `Version ${roster.version_number} · ${roster.status.toUpperCase()} · ${new Date(roster.created_at).toLocaleDateString("en-AU")}`;
       row.append(info);
+      if (roster.status === "draft" && rosterCanManage()) {
+        const publish = document.createElement("button");
+        publish.type = "button";
+        publish.className = "text-button";
+        publish.textContent = "Publish roster";
+        publish.addEventListener("click", async () => {
+          if (!confirm("Publish this roster? Team members will be able to view its scheduled stints.")) return;
+          publish.disabled = true;
+          const { error } = await supabaseClient.from("rosters").update({ status: "published", published_at: new Date().toISOString() }).eq("id", roster.id);
+          if (error) {
+            setRosterMessage("#manual-roster-message", "Roster could not be published. Check permissions and try again.", true);
+            publish.disabled = false;
+            return;
+          }
+          setRosterMessage("#manual-roster-message", `Roster version ${roster.version_number} published successfully.`);
+          await loadRosters();
+        });
+        row.append(publish);
+      }
       section.append(row);
     });
     list.append(section);
