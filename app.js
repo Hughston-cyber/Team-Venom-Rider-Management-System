@@ -953,7 +953,7 @@ async function loadNotifications() {
     const message=document.createElement("p");message.textContent=item.message;
     const meta=document.createElement("small");meta.textContent=formatDateTime(item.created_at)+" · "+item.channel.replace("_"," ").toUpperCase();
     row.append(title,message,meta);
-    if(!item.read_at){const button=document.createElement("button");button.type="button";button.className="text-button";button.textContent="Mark as read";button.addEventListener("click",async()=>{const {error:markError}=await supabaseClient.from("notifications").update({read_at:new Date().toISOString(),status:"read"}).eq("id",item.id);if(markError){setModuleMessage("#announcement-message","Could not update notification.",true);}else await loadNotifications();});row.append(button);}
+    if(!item.read_at){const button=document.createElement("button");button.type="button";button.className="text-button";button.textContent="Mark as read";button.addEventListener("click",async()=>{const {error:markError}=await supabaseClient.from("notifications").update({read_at:new Date().toISOString(),status:"read"}).eq("id",item.id);if(markError){setModuleMessage("#notification-message","Could not update notification: "+markError.message,true);}else await loadNotifications();});row.append(button);}
     list.append(row);
   });
   document.querySelector("#announcement-panel").hidden=!canManageNotifications();
