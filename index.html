@@ -63,14 +63,14 @@
           <div class="heading-actions"><span class="date-chip">SEASON 2026</span></div>
         </div>
 
-        <div class="notice"><span class="notice-icon">i</span><div><strong>Database connected</strong><p>Your account is authenticated. Live rider, roster and event modules are being built and will appear here as they are completed.</p></div></div>
+        <div class="notice"><span class="notice-icon">i</span><div><strong>Database connected</strong><p>Your Team Venom workspace is connected to Supabase. Use the modules below to manage riders, schedules and race operations.</p></div></div>
 
-        <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Team snapshot</h2></div><span class="muted">Awaiting data connection</span></div>
+        <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Team snapshot</h2></div><span class="muted" id="overview-updated">Live database summary</span></div>
         <div class="stats-grid">
-          <article class="stat-card"><div class="stat-label">REGISTERED RIDERS <span>♙</span></div><div class="stat-value">—</div><div class="stat-foot">Database not connected</div></article>
-          <article class="stat-card"><div class="stat-label">UPCOMING EVENTS <span>▣</span></div><div class="stat-value">—</div><div class="stat-foot">No event data loaded</div></article>
-          <article class="stat-card"><div class="stat-label">ROSTERED STINTS <span>◷</span></div><div class="stat-value">—</div><div class="stat-foot">No roster uploaded</div></article>
-          <article class="stat-card"><div class="stat-label">SYSTEM ALERTS <span>!</span></div><div class="stat-value">—</div><div class="stat-foot">Notifications not connected</div></article>
+          <article class="stat-card"><div class="stat-label">REGISTERED RIDERS <span>♙</span></div><div class="stat-value" id="overview-riders">—</div><div class="stat-foot">Registered team riders</div></article>
+          <article class="stat-card"><div class="stat-label">UPCOMING EVENTS <span>▣</span></div><div class="stat-value" id="overview-events">—</div><div class="stat-foot">Upcoming and active events</div></article>
+          <article class="stat-card"><div class="stat-label">ROSTERED STINTS <span>◷</span></div><div class="stat-value" id="overview-stints">—</div><div class="stat-foot">Saved roster allocations</div></article>
+          <article class="stat-card"><div class="stat-label">SYSTEM ALERTS <span>!</span></div><div class="stat-value" id="overview-alerts">—</div><div class="stat-foot">Unread in-app notifications</div></article>
         </div>
 
         <div class="dashboard-grid">
@@ -84,12 +84,12 @@
             </div>
           </article>
           <article class="panel build-panel">
-            <div class="panel-heading"><div><p class="eyebrow">PROJECT STATUS</p><h2>Build progress</h2></div><span class="live-indicator">IN DEVELOPMENT</span></div>
-            <div class="progress-row"><span>Interface foundation</span><strong>Started</strong></div><div class="progress-track"><span style="width:100%"></span></div>
-            <div class="progress-row"><span>Database architecture</span><strong>Next stage</strong></div><div class="progress-track"><span style="width:8%"></span></div>
-            <div class="progress-row"><span>Authentication &amp; roles</span><strong>Pending</strong></div><div class="progress-track"><span style="width:0%"></span></div>
-            <div class="progress-row"><span>Roster &amp; race operations</span><strong>Pending</strong></div><div class="progress-track"><span style="width:0%"></span></div>
-            <p class="build-note">No real rider information is stored in this prototype.</p>
+            <div class="panel-heading"><div><p class="eyebrow">PROJECT STATUS</p><h2>Build progress</h2></div><span class="live-indicator">BETA WORKSPACE</span></div>
+            <div class="progress-row"><span>Authentication &amp; role checks</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
+            <div class="progress-row"><span>Rider directory &amp; private notes</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
+            <div class="progress-row"><span>Roster builder</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
+            <div class="progress-row"><span>Race-day &amp; reporting tools</span><strong>Beta</strong></div><div class="progress-track"><span style="width:75%"></span></div>
+            <p class="build-note">Beta release. Validate workflows and permissions before operational use.</p>
           </article>
         </div>
         <footer>TEAM VENOM <span>•</span> RIDER MANAGEMENT SYSTEM <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
@@ -212,6 +212,76 @@
             <div id="roster-list" hidden></div>
             <div id="roster-empty" class="empty-state" hidden>No race events or rosters have been created yet.</div>
             <div id="roster-error" class="empty-state error-state" hidden>Roster data could not be loaded. Refresh or contact an administrator.</div>
+          </div>
+        </div>
+
+        <div id="race-day-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Record actual rider stints and monitor event activity.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
+          <div class="roster-stats-grid">
+            <article class="stat-card"><div class="stat-label">RECORDED STINTS</div><div class="stat-value" id="race-day-total">—</div><div class="stat-foot">Actual race records</div></article>
+            <article class="stat-card"><div class="stat-label">LAPS RECORDED</div><div class="stat-value" id="race-day-laps">—</div><div class="stat-foot">Across all recorded stints</div></article>
+            <article class="stat-card"><div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div></article>
+          </div>
+          <section class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">RACE RECORD / ENTRY</p><h2>Record an actual stint</h2></div><span class="panel-tag">ADMIN / MANAGER</span></div>
+            <form id="race-record-form">
+              <div class="roster-form-grid">
+                <label>Scheduled roster stint<select id="race-record-roster-stint" name="roster_stint_id" required><option value="">Choose a published or draft stint…</option></select></label>
+                <label>Actual start<input name="actual_start" type="datetime-local"></label>
+                <label>Actual end<input name="actual_end" type="datetime-local"></label>
+                <label>Laps completed<input name="laps_completed" type="number" min="0" step="1"></label>
+                <label>Best lap (seconds)<input name="best_lap_seconds" type="number" min="0" step="0.1"></label>
+                <label>Entry notes<input name="entry_notes" maxlength="1000" placeholder="Optional race notes"></label>
+              </div>
+              <div class="roster-actions"><span class="muted">Actual records are stored separately from the planned roster.</span><button class="primary-button" id="save-race-record" type="submit">Save race record</button></div>
+            </form>
+            <p class="inline-message" id="race-record-message" role="status"></p>
+          </section>
+          <div class="roster-summary-row"><div><p class="eyebrow">RECENT ACTIVITY</p><h2>Recorded race stints</h2></div></div>
+          <div class="panel roster-table-panel"><div id="race-record-list" class="record-list"><div class="empty-state">Loading race records…</div></div></div>
+        </div>
+        <div id="performance-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM DATA / ANALYTICS</p><h1>Performance centre<span>.</span></h1><p class="subheading">A live summary of recorded race participation and rider performance.</p></div><div class="heading-actions"><button class="text-button" id="refresh-performance" type="button">↻ Refresh</button></div></div>
+          <div class="profile-stats-grid">
+            <article class="stat-card"><div class="stat-label">TOTAL LAPS</div><div class="stat-value" id="performance-laps">—</div><div class="stat-foot">Recorded race laps</div></article>
+            <article class="stat-card"><div class="stat-label">RACE STINTS</div><div class="stat-value" id="performance-stints">—</div><div class="stat-foot">Completed or recorded</div></article>
+            <article class="stat-card"><div class="stat-label">RIDERS WITH DATA</div><div class="stat-value" id="performance-riders">—</div><div class="stat-foot">Riders with recorded stints</div></article>
+            <article class="stat-card"><div class="stat-label">AVERAGE LAPS / STINT</div><div class="stat-value" id="performance-average">—</div><div class="stat-foot">Based on recorded stints</div></article>
+          </div>
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">RIDER COMPARISON</p><h2>Recorded lap leaderboard</h2></div></div><div id="performance-leaderboard" class="record-list"><div class="empty-state">Loading performance data…</div></div></section>
+        </div>
+        <div id="notifications-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM COMMUNICATIONS</p><h1>Notifications<span>.</span></h1><p class="subheading">View in-app updates and send team announcements.</p></div><div class="heading-actions"><button class="text-button" id="refresh-notifications" type="button">↻ Refresh</button></div></div>
+          <section class="panel roster-form-panel" id="announcement-panel">
+            <div class="panel-heading"><div><p class="eyebrow">ADMIN / MANAGER</p><h2>Send an in-app announcement</h2></div><span class="panel-tag">IN-APP ONLY</span></div>
+            <form id="announcement-form" class="roster-form-grid">
+              <label>Title<input name="title" maxlength="120" required placeholder="Announcement title"></label>
+              <label class="announcement-message-field">Message<input name="message" maxlength="2000" required placeholder="Write the team update"></label>
+              <div class="form-actions"><button class="primary-button" id="send-announcement" type="submit">Send announcement</button></div>
+            </form>
+            <p class="inline-message" id="announcement-message" role="status"></p>
+          </section>
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">YOUR INBOX</p><h2>Recent notifications</h2></div></div><div id="notification-list" class="record-list"><div class="empty-state">Loading notifications…</div></div></section>
+          <p class="profile-note-help">Announcements appear in this website's inbox. Email and push delivery are not configured in this release.</p>
+        </div>
+        <div id="settings-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">ACCOUNT / PREFERENCES</p><h1>Settings<span>.</span></h1><p class="subheading">Review your account access and notification preferences.</p></div></div>
+          <div class="profile-columns">
+            <section class="panel"><div class="panel-heading"><div><p class="eyebrow">ACCOUNT ACCESS</p><h2>Your account</h2></div></div>
+              <div class="settings-detail"><span>Display name</span><strong id="settings-name">—</strong></div>
+              <div class="settings-detail"><span>Account email</span><strong id="settings-email">—</strong></div>
+              <div class="settings-detail"><span>Assigned role(s)</span><strong id="settings-roles">—</strong></div>
+              <div class="settings-detail"><span>Account status</span><strong id="settings-status">—</strong></div>
+            </section>
+            <section class="panel"><div class="panel-heading"><div><p class="eyebrow">COMMUNICATIONS</p><h2>Notification preferences</h2></div></div>
+              <form id="notification-preferences-form" class="preferences-form">
+                <label><input type="checkbox" name="in_app" checked> In-app notifications</label>
+                <label><input type="checkbox" name="email"> Email notifications <small>Preference only. Delivery is not configured.</small></label>
+                <label><input type="checkbox" name="push"> Push notifications <small>Preference only. Delivery is not configured.</small></label>
+                <button class="primary-button" id="save-preferences" type="submit">Save preferences</button>
+              </form>
+              <p class="inline-message" id="preferences-message" role="status"></p>
+            </section>
           </div>
         </div>
         <div id="module-placeholder" hidden>
