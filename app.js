@@ -14,11 +14,11 @@ const breadcrumb = document.querySelector("#breadcrumb-current");
 const pageCopy = {
   overview: ["Operations overview.", "Your central workspace for riders, rosters and race-day operations."],
   riders: ["Rider directory.", "Manage rider profiles, contact records and eligibility."],
-  rosters: ["Roster management.", "Upload, validate and manage race rosters and stint allocations."],
-  "race-day": ["Race-day control.", "Coordinate live operations, rider changes and stint completion."],
+  rosters: ["Roster management.", "Build, review and publish race rosters and stint allocations."],
+  "race-day": ["Race-day control.", "Record actual stints, laps and race activity."],
   performance: ["Performance centre.", "Review rider participation and team performance statistics."],
-  notifications: ["Notifications.", "Manage operational alerts and important team updates."],
-  settings: ["System settings.", "Configure the platform, access controls and team preferences."]
+  notifications: ["Notifications.", "View in-app updates and send team announcements."],
+  settings: ["System settings.", "Review account access and notification preferences."]
 };
 
 let currentRoles = [];
@@ -39,20 +39,22 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  document.querySelector("#overview-content").hidden = view !== "overview";
-  document.querySelector("#riders-content").hidden = view !== "riders";
+  const views = ["overview","riders","rosters","race-day","performance","notifications","settings"];
+  views.forEach(name => {
+    const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
+    if (node) node.hidden = view !== name;
+  });
   document.querySelector("#rider-profile-content").hidden = true;
-  document.querySelector("#rosters-content").hidden = view !== "rosters";
-  document.querySelector("#module-placeholder").hidden = ["overview", "riders", "rosters"].includes(view);
-  if (!["overview", "riders"].includes(view)) {
-    document.querySelector("#placeholder-title").textContent = copy[0];
-    document.querySelector("#placeholder-description").textContent = copy[1];
-  }
+  document.querySelector("#module-placeholder").hidden = true;
   document.querySelector("#sidebar").classList.remove("open");
+  if (view === "overview") loadOverview();
   if (view === "riders") loadRiders();
   if (view === "rosters") loadRosters();
+  if (view === "race-day") loadRaceDay();
+  if (view === "performance") loadPerformance();
+  if (view === "notifications") loadNotifications();
+  if (view === "settings") loadSettings();
 }
-
 document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
 });
@@ -386,6 +388,8 @@ async function showAuthenticatedWorkspace(session) {
   }
 
   const profile = profileResult.data;
+  currentProfile = profile;
+  currentUser = session.user;
   currentRoles = (roleResult.data || []).map(item => item.role);
   if (!profile || profile.status !== "active" || currentRoles.length === 0) {
     await supabaseClient.auth.signOut();
@@ -403,6 +407,7 @@ async function showAuthenticatedWorkspace(session) {
 document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
   appShell.hidden = false;
   authScreen.hidden = true;
+  loadOverview();
 }
 
 loginForm.addEventListener("submit", async event => {
@@ -786,3 +791,176 @@ document.querySelector("#refresh-rosters").addEventListener("click", loadRosters
 document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
 document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
 document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
+
+/* APPLICATION MODULES */
+let currentProfile = null;
+let currentUser = null;
+let raceDayRosterStints = [];
+
+function setModuleMessage(id, message, error = false) {
+  const node = document.querySelector(id);
+  if (!node) return;
+  node.textContent = message;
+  node.className = error ? "inline-message error-state" : "inline-message success-message";
+}
+function canManageOperations() {
+  return currentRoles.some(role => ["administrator","manager"].includes(role));
+}
+function safeNumber(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString("en-AU") : "Not recorded";
+}
+async function loadOverview() {
+  const [riders, events, stints, alerts] = await Promise.all([
+    supabaseClient.from("riders").select("id",{count:"exact",head:true}),
+    supabaseClient.from("race_events").select("id",{count:"exact",head:true}).in("status",["planning","confirmed"]),
+    supabaseClient.from("roster_stints").select("id",{count:"exact",head:true}),
+    supabaseClient.from("notifications").select("id",{count:"exact",head:true}).eq("status","sent").is("read_at",null)
+  ]);
+  document.querySelector("#overview-riders").textContent = riders.error ? "—" : (riders.count ?? 0).toLocaleString("en-AU");
+  document.querySelector("#overview-events").textContent = events.error ? "—" : (events.count ?? 0).toLocaleString("en-AU");
+  document.querySelector("#overview-stints").textContent = stints.error ? "—" : (stints.count ?? 0).toLocaleString("en-AU");
+  document.querySelector("#overview-alerts").textContent = alerts.error ? "—" : (alerts.count ?? 0).toLocaleString("en-AU");
+  document.querySelector("#overview-updated").textContent = "Updated " + new Date().toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"});
+}
+async function loadRaceDay() {
+  const list = document.querySelector("#race-record-list");
+  list.textContent = "Loading race records…";
+  const [rosterResult, recordResult, ridersResult] = await Promise.all([
+    supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
+    supabaseClient.from("race_stints").select("id,event_id,rider_id,actual_start,actual_end,laps_completed,best_lap_seconds,entry_notes,riders(first_name,last_name,preferred_name),race_events(event_name)").order("created_at",{ascending:false}).limit(100),
+    supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active")
+  ]);
+  if (rosterResult.error || recordResult.error || ridersResult.error) {
+    list.textContent = "Race-day data could not be loaded. Check database access and refresh.";
+    return;
+  }
+  raceDayRosterStints = rosterResult.data || [];
+  const select = document.querySelector("#race-record-roster-stint");
+  const previous = select.value;
+  select.replaceChildren(new Option("Choose a scheduled stint…",""));
+  raceDayRosterStints.forEach(item => {
+    const rider = item.riders;
+    const event = item.rosters?.race_events;
+    const name = rider ? (rider.preferred_name || rider.first_name) + " " + rider.last_name : "Rider";
+    select.add(new Option((event?.event_name || "Event") + " · Stint " + item.stint_number + " · " + name,item.id));
+  });
+  if (raceDayRosterStints.some(item => item.id === previous)) select.value = previous;
+  const records = recordResult.data || [];
+  document.querySelector("#race-day-total").textContent = records.length.toLocaleString("en-AU");
+  document.querySelector("#race-day-laps").textContent = records.reduce((sum,item)=>sum+safeNumber(item.laps_completed),0).toLocaleString("en-AU");
+  document.querySelector("#race-day-riders").textContent = (ridersResult.count ?? 0).toLocaleString("en-AU");
+  list.replaceChildren();
+  if (!records.length) {
+    list.textContent = "No actual race stints have been recorded yet.";
+  } else records.forEach(item => {
+    const row = document.createElement("article");
+    row.className = "record-row";
+    const heading = document.createElement("strong");
+    heading.textContent = (item.race_events?.event_name || "Race event") + " · " + (item.riders?.preferred_name || item.riders?.first_name || "Rider") + " " + (item.riders?.last_name || "");
+    const detail = document.createElement("small");
+    detail.textContent = [item.actual_start ? formatDateTime(item.actual_start) : null,item.laps_completed !== null ? item.laps_completed + " laps" : null,item.best_lap_seconds ? "Best lap " + item.best_lap_seconds + "s" : null].filter(Boolean).join(" · ");
+    row.append(heading,detail);
+    if (item.entry_notes) { const note=document.createElement("small"); note.textContent=item.entry_notes; row.append(note); }
+    list.append(row);
+  });
+  document.querySelector("#race-record-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!canManageOperations();});
+  document.querySelector("#race-record-form").addEventListener("submit", saveRaceRecord, {once:true});
+}
+async function saveRaceRecord(event) {
+  event.preventDefault();
+  if (!canManageOperations()) return;
+  const form=event.currentTarget;
+  const values=Object.fromEntries(new FormData(form).entries());
+  const planned=raceDayRosterStints.find(item=>item.id===values.roster_stint_id);
+  if (!planned) { setModuleMessage("#race-record-message","Choose a scheduled roster stint.",true); return; }
+  const start=values.actual_start ? new Date(values.actual_start) : null;
+  const end=values.actual_end ? new Date(values.actual_end) : null;
+  if (start && Number.isNaN(start.getTime()) || end && Number.isNaN(end.getTime()) || start && end && end<=start) {
+    setModuleMessage("#race-record-message","Check the actual start and end times.",true); return;
+  }
+  const {data:auth}=await supabaseClient.auth.getUser();
+  const payload={event_id:planned.rosters.event_id,rider_id:planned.rider_id,roster_stint_id:planned.id,actual_start:start?start.toISOString():null,actual_end:end?end.toISOString():null,laps_completed:values.laps_completed===""?null:Number(values.laps_completed),best_lap_seconds:values.best_lap_seconds===""?null:Number(values.best_lap_seconds),entry_notes:values.entry_notes.trim()||null,entered_by:auth.user?.id};
+  const button=document.querySelector("#save-race-record"); button.disabled=true; button.textContent="Saving…";
+  const {error}=await supabaseClient.from("race_stints").insert(payload);
+  button.disabled=false; button.textContent="Save race record";
+  if(error){setModuleMessage("#race-record-message","Race record could not be saved: "+error.message,true);return;}
+  form.reset(); setModuleMessage("#race-record-message","Race record saved."); await loadRaceDay(); await loadPerformance(); await loadOverview();
+}
+async function loadPerformance() {
+  const board=document.querySelector("#performance-leaderboard"); board.textContent="Loading performance data…";
+  const [records,riders]=await Promise.all([
+    supabaseClient.from("race_stints").select("rider_id,laps_completed,best_lap_seconds"),
+    supabaseClient.from("riders").select("id,first_name,last_name,preferred_name")
+  ]);
+  if(records.error||riders.error){board.textContent="Performance data could not be loaded.";return;}
+  const rows=records.data||[], names=new Map((riders.data||[]).map(r=>[r.id,r]));
+  const totals=new Map();
+  rows.forEach(item=>{const old=totals.get(item.rider_id)||{laps:0,stints:0,best:null};old.laps+=safeNumber(item.laps_completed);old.stints++;const best=Number(item.best_lap_seconds);if(best>0&&(old.best===null||best<old.best))old.best=best;totals.set(item.rider_id,old);});
+  const sorted=[...totals.entries()].sort((a,b)=>b[1].laps-a[1].laps);
+  const totalLaps=rows.reduce((sum,item)=>sum+safeNumber(item.laps_completed),0);
+  document.querySelector("#performance-laps").textContent=totalLaps.toLocaleString("en-AU");
+  document.querySelector("#performance-stints").textContent=rows.length.toLocaleString("en-AU");
+  document.querySelector("#performance-riders").textContent=totals.size.toLocaleString("en-AU");
+  document.querySelector("#performance-average").textContent=rows.length?(totalLaps/rows.length).toFixed(1):"0";
+  board.replaceChildren();
+  if(!sorted.length){board.textContent="No race performance data has been recorded yet.";return;}
+  sorted.forEach(([id,stats],index)=>{
+    const rider=names.get(id);const row=document.createElement("article");row.className="record-row";
+    const name=document.createElement("strong");name.textContent=(index+1)+". "+(rider?(rider.preferred_name||rider.first_name)+" "+rider.last_name:"Unknown rider");
+    const detail=document.createElement("small");detail.textContent=stats.laps+" laps · "+stats.stints+" stints · Best lap "+(stats.best===null?"—":stats.best+"s");
+    row.append(name,detail);board.append(row);
+  });
+}
+async function loadNotifications() {
+  const list=document.querySelector("#notification-list");list.textContent="Loading notifications…";
+  const {data,error}=await supabaseClient.from("notifications").select("id,title,message,channel,status,created_at,read_at").order("created_at",{ascending:false}).limit(100);
+  if(error){list.textContent="Notifications could not be loaded.";return;}
+  list.replaceChildren();
+  if(!data?.length){list.textContent="Your inbox is clear. No notifications yet.";return;}
+  data.forEach(item=>{
+    const row=document.createElement("article");row.className="record-row"+(item.read_at?"":" record-unread");
+    const title=document.createElement("strong");title.textContent=item.title;
+    const message=document.createElement("p");message.textContent=item.message;
+    const meta=document.createElement("small");meta.textContent=formatDateTime(item.created_at)+" · "+item.channel.replace("_"," ").toUpperCase();
+    row.append(title,message,meta);
+    if(!item.read_at){const button=document.createElement("button");button.type="button";button.className="text-button";button.textContent="Mark as read";button.addEventListener("click",async()=>{const {error:markError}=await supabaseClient.from("notifications").update({read_at:new Date().toISOString(),status:"read"}).eq("id",item.id);if(markError){setModuleMessage("#announcement-message","Could not update notification.",true);}else await loadNotifications();});row.append(button);}
+    list.append(row);
+  });
+  document.querySelector("#announcement-panel").hidden=!canManageOperations();
+  document.querySelector("#announcement-form").querySelectorAll("input,button").forEach(control=>{control.disabled=!canManageOperations();});
+}
+async function sendAnnouncement(event) {
+  event.preventDefault();if(!canManageOperations())return;
+  const form=event.currentTarget;const values=Object.fromEntries(new FormData(form).entries());
+  const button=document.querySelector("#send-announcement");button.disabled=true;button.textContent="Sending…";
+  const {error}=await supabaseClient.from("notifications").insert({recipient_user_id:null,title:values.title.trim(),message:values.message.trim(),channel:"in_app",status:"sent",sent_at:new Date().toISOString()});
+  button.disabled=false;button.textContent="Send announcement";
+  if(error){setModuleMessage("#announcement-message","Announcement could not be saved: "+error.message,true);return;}
+  form.reset();setModuleMessage("#announcement-message","Announcement posted to the in-app inbox.");await loadNotifications();await loadOverview();
+}
+async function loadSettings() {
+  if(!currentProfile||!currentUser)return;
+  document.querySelector("#settings-name").textContent=currentProfile.display_name||"Team member";
+  document.querySelector("#settings-email").textContent=currentUser.email||"Not available";
+  document.querySelector("#settings-roles").textContent=currentRoles.join(", ");
+  document.querySelector("#settings-status").textContent=currentProfile.status;
+  const {data,error}=await supabaseClient.from("notification_preferences").select("channel,enabled").eq("user_id",currentUser.id);
+  if(error){setModuleMessage("#preferences-message","Could not load preferences. Please refresh.",true);return;}
+  const preferences=new Map((data||[]).map(item=>[item.channel,item.enabled]));
+  ["in_app","email","push"].forEach(channel=>{const field=document.querySelector("#notification-preferences-form").elements[channel];field.checked=preferences.has(channel)?preferences.get(channel):channel==="in_app";});
+}
+async function savePreferences(event) {
+  event.preventDefault();const form=event.currentTarget;const button=document.querySelector("#save-preferences");button.disabled=true;button.textContent="Saving…";
+  const rows=["in_app","email","push"].map(channel=>({user_id:currentUser.id,channel,enabled:form.elements[channel].checked,updated_at:new Date().toISOString()}));
+  const {error}=await supabaseClient.from("notification_preferences").upsert(rows,{onConflict:"user_id,channel"});
+  button.disabled=false;button.textContent="Save preferences";
+  setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
+}
+document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
+document.querySelector("#refresh-performance").addEventListener("click",loadPerformance);
+document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
+document.querySelector("#announcement-form").addEventListener("submit",sendAnnouncement);
+document.querySelector("#notification-preferences-form").addEventListener("submit",savePreferences);
