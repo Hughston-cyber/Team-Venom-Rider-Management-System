@@ -403,6 +403,7 @@ async function showAuthenticatedWorkspace(session) {
   document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
   document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
 document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
+document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control => { control.disabled = !rosterCanManage(); });
   appShell.hidden = false;
   authScreen.hidden = true;
   loadOverview();
