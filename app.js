@@ -815,7 +815,7 @@ document.querySelector("#manual-stint-form").addEventListener("submit", async ev
 let bulkRosterPreview = null;
 
 function parseRosterClock(value) {
-  const match = String(value || "").trim().match(/^(\\d{1,2}):(\\d{2})$/);
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
@@ -824,7 +824,7 @@ function parseRosterClock(value) {
 }
 
 function parseRosterDuration(value) {
-  const match = String(value || "").trim().match(/^(\\d+(?:\\.\\d+)?)\\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$/i);
+  const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$/i);
   if (!match) return null;
   const amount = Number(match[1]);
   const unit = (match[2] || "minutes").toLowerCase();
@@ -841,9 +841,9 @@ function parseBulkRoster(text, eventId) {
   const eventRecord = rosterEvents.find(item => item.id === eventId);
   if (!eventRecord) return { error: "Select a draft roster before checking the pasted schedule." };
   if (!eventRecord.start_date) return { error: "This event needs a start date before an overnight roster can be imported. Add the event start date first." };
-  const lines = String(text || "").split(/\\r?\\n/).map(line => line.trimEnd()).filter(line => line.trim());
+  const lines = String(text || "").split(/\r?\n/).map(line => line.trimEnd()).filter(line => line.trim());
   if (lines.length < 2) return { error: "Paste the roster including its header row and at least one stint." };
-  const rows = lines.map(line => line.split("\\t").map(cell => cell.trim()));
+  const rows = lines.map(line => line.split("\t").map(cell => cell.trim()));
   const headers = rows[0].map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ""));
   const findColumn = names => headers.findIndex(header => names.includes(header));
   const columns = {
