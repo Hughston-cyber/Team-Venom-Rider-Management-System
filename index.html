@@ -201,6 +201,18 @@
             </form>
             <p class="inline-message" id="manual-stint-message" role="status" aria-live="polite"></p>
           </div>
+          <div class="panel roster-form-panel" id="bulk-roster-panel">
+            <div class="panel-heading"><div><p class="eyebrow">STEP 3 / BULK IMPORT</p><h2>Import a roster from Excel</h2></div><span class="panel-tag">PASTE TABLE</span></div>
+            <p class="roster-import-copy">Copy the roster cells from Excel and paste them below, including the header row. The system accepts tab-separated rows in the Team Venom format.</p>
+            <label class="roster-import-label" for="bulk-roster-data">Roster spreadsheet data</label>
+            <textarea id="bulk-roster-data" class="roster-import-textarea" rows="9" spellcheck="false" placeholder="#&#9;Stint time&#9;Duration&#9;Time in&#9;Time out&#9;Rider"></textarea>
+            <div class="roster-actions roster-import-actions">
+              <span class="muted">Import target: selected draft roster</span>
+              <button class="primary-button" id="preview-bulk-roster" type="button">Check roster</button>
+            </div>
+            <div id="bulk-roster-preview" class="roster-import-preview" hidden></div>
+            <p class="inline-message" id="bulk-roster-message" role="status" aria-live="polite"></p>
+          </div>
           <div class="roster-summary-row"><div><p class="eyebrow">CURRENT DRAFT</p><h2>Stint allocations</h2></div><button class="text-button" id="refresh-rosters" type="button">↻ Refresh</button></div>
           <div class="panel roster-table-panel">
             <div id="manual-stint-empty" class="empty-state">Select a draft roster to view or add its stints.</div>
