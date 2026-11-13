@@ -533,6 +533,81 @@ function renderRosterRecords() {
       info.textContent = `Version ${roster.version_number} · ${roster.status.toUpperCase()} · ${new Date(roster.created_at).toLocaleDateString("en-AU")}`;
       row.append(info);
       if (roster.status === "draft" && rosterCanManage()) {
+        const actions = document.createElement("div");
+        actions.className = "roster-version-actions";
+
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "text-button";
+        edit.textContent = "Edit draft";
+        edit.addEventListener("click", () => {
+          const select = document.querySelector("#manual-roster-select");
+          select.value = roster.id;
+          select.dispatchEvent(new Event("change"));
+          document.querySelector("#manual-stint-form").scrollIntoView({ behavior: "smooth", block: "center" });
+          document.querySelector("#manual-rider-select").focus();
+          setRosterMessage("#manual-stint-message", `Editing draft version ${roster.version_number}. Add or remove its stint allocations above.`);
+        });
+
+        const rename = document.createElement("button");
+        rename.type = "button";
+        rename.className = "text-button";
+        rename.textContent = "Edit version";
+        rename.addEventListener("click", async () => {
+          const answer = prompt("Enter the new draft version number:", String(roster.version_number));
+          if (answer === null) return;
+          const version = Number(answer.trim());
+          if (!Number.isInteger(version) || version < 1) {
+            setRosterMessage("#manual-roster-message", "Version number must be a whole number greater than zero.", true);
+            return;
+          }
+          if (rosterRecords.some(item => item.id !== roster.id && item.event_id === roster.event_id && Number(item.version_number) === version)) {
+            setRosterMessage("#manual-roster-message", "That version number is already used for this event.", true);
+            return;
+          }
+          rename.disabled = true;
+          const { error } = await supabaseClient.from("rosters").update({ version_number: version }).eq("id", roster.id).eq("status", "draft");
+          if (error) {
+            setRosterMessage("#manual-roster-message", "Draft version could not be updated. Check your access and try again.", true);
+            rename.disabled = false;
+            return;
+          }
+          setRosterMessage("#manual-roster-message", `Draft renamed to version ${version}.`);
+          await loadRosters();
+        });
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "text-button roster-delete-button";
+        remove.textContent = "Delete draft";
+        remove.addEventListener("click", async () => {
+          if (!rosterCanManage()) return;
+          const { count, error: countError } = await supabaseClient
+            .from("roster_stints").select("id", { count: "exact", head: true }).eq("roster_id", roster.id);
+          if (countError) {
+            setRosterMessage("#manual-roster-message", "The draft could not be checked. Nothing was deleted.", true);
+            return;
+          }
+          const eventName = group.event.event_name;
+          if (!confirm(`Delete draft version ${roster.version_number} for ${eventName}? This will permanently remove its ${count || 0} scheduled stint(s). Published rosters cannot be deleted here.`)) return;
+          remove.disabled = true;
+          const { error: stintsError } = await supabaseClient.from("roster_stints").delete().eq("roster_id", roster.id);
+          if (stintsError) {
+            setRosterMessage("#manual-roster-message", "The draft's stints could not be removed. The draft was kept.", true);
+            remove.disabled = false;
+            return;
+          }
+          const { error: rosterError } = await supabaseClient.from("rosters").delete().eq("id", roster.id).eq("status", "draft");
+          if (rosterError) {
+            setRosterMessage("#manual-roster-message", "The stints were removed, but the draft record could not be deleted. Please refresh and contact an administrator if it remains.", true);
+            remove.disabled = false;
+            await loadRosters();
+            return;
+          }
+          setRosterMessage("#manual-roster-message", `Draft version ${roster.version_number} deleted.`);
+          await loadRosters();
+        });
+
         const publish = document.createElement("button");
         publish.type = "button";
         publish.className = "text-button";
@@ -540,7 +615,7 @@ function renderRosterRecords() {
         publish.addEventListener("click", async () => {
           if (!confirm("Publish this roster? Team members will be able to view its scheduled stints.")) return;
           publish.disabled = true;
-          const { error } = await supabaseClient.from("rosters").update({ status: "published", published_at: new Date().toISOString() }).eq("id", roster.id);
+          const { error } = await supabaseClient.from("rosters").update({ status: "published", published_at: new Date().toISOString() }).eq("id", roster.id).eq("status", "draft");
           if (error) {
             setRosterMessage("#manual-roster-message", "Roster could not be published. Check permissions and try again.", true);
             publish.disabled = false;
@@ -549,7 +624,8 @@ function renderRosterRecords() {
           setRosterMessage("#manual-roster-message", `Roster version ${roster.version_number} published successfully.`);
           await loadRosters();
         });
-        row.append(publish);
+        actions.append(edit, rename, remove, publish);
+        row.append(actions);
       }
       section.append(row);
     });
