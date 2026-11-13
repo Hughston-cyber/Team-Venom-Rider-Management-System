@@ -810,6 +810,251 @@ document.querySelector("#manual-stint-form").addEventListener("submit", async ev
   form.elements.roster_id.value = rosterId;
 });
 
+
+let bulkRosterPreview = null;
+
+function parseRosterClock(value) {
+  const match = String(value || "").trim().match(/^(\\d{1,2}):(\\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function parseRosterDuration(value) {
+  const match = String(value || "").trim().match(/^(\\d+(?:\\.\\d+)?)\\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = (match[2] || "minutes").toLowerCase();
+  return /^(h|hr|hrs|hour|hours)$/.test(unit) ? amount * 60 : amount;
+}
+
+function rosterDateTime(dateString, minutesFromMidnight, dayOffset) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const value = new Date(year, month - 1, day + dayOffset, Math.floor(minutesFromMidnight / 60), minutesFromMidnight % 60, 0, 0);
+  return value;
+}
+
+function parseBulkRoster(text, eventId) {
+  const eventRecord = rosterEvents.find(item => item.id === eventId);
+  if (!eventRecord) return { error: "Select a draft roster before checking the pasted schedule." };
+  if (!eventRecord.start_date) return { error: "This event needs a start date before an overnight roster can be imported. Add the event start date first." };
+  const lines = String(text || "").split(/\\r?\\n/).map(line => line.trimEnd()).filter(line => line.trim());
+  if (lines.length < 2) return { error: "Paste the roster including its header row and at least one stint." };
+  const rows = lines.map(line => line.split("\\t").map(cell => cell.trim()));
+  const headers = rows[0].map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const findColumn = names => headers.findIndex(header => names.includes(header));
+  const columns = {
+    number: findColumn(["#", "stint", "stintnumber", "number"]),
+    stintTime: findColumn(["stinttime", "starttime"]),
+    duration: findColumn(["duration"]),
+    timeIn: findColumn(["timein", "start", "scheduledstart"]),
+    timeOut: findColumn(["timeout", "finish", "scheduledend"]),
+    rider: findColumn(["rider", "ridername", "name"])
+  };
+  if (Object.values(columns).some(index => index < 0)) {
+    return { error: "The header row must contain: #, Stint time, Duration, Time in, Time out and Rider." };
+  }
+  const riderLookup = new Map();
+  rosterRiders.forEach(rider => {
+    const names = [displayRiderName(rider), [rider.first_name, rider.last_name].filter(Boolean).join(" "), rider.preferred_name].filter(Boolean);
+    names.forEach(name => riderLookup.set(name.trim().toLowerCase(), rider));
+  });
+  const parsed = [];
+  const errors = [];
+  let previousStart = null;
+  let dayOffset = 0;
+  rows.slice(1).forEach((cells, index) => {
+    const lineNumber = index + 2;
+    const get = key => cells[columns[key]] || "";
+    if (cells.every(cell => !cell)) return;
+    const stintNumber = Number(get("number"));
+    const startClock = parseRosterClock(get("timeIn"));
+    const endClock = parseRosterClock(get("timeOut"));
+    const stintClock = parseRosterClock(get("stintTime"));
+    const duration = parseRosterDuration(get("duration"));
+    const rider = riderLookup.get(get("rider").toLowerCase());
+    if (!Number.isInteger(stintNumber) || stintNumber < 1) errors.push(`Row ${lineNumber}: invalid stint number.`);
+    if (startClock === null || endClock === null || stintClock === null) errors.push(`Row ${lineNumber}: use 24-hour times such as 12:40 or 0:40.`);
+    if (startClock !== null && stintClock !== null && startClock !== stintClock) errors.push(`Row ${lineNumber}: Stint time and Time in do not match.`);
+    if (duration === null || duration <= 0) errors.push(`Row ${lineNumber}: duration must be a positive number of minutes (for example, 40 Minutes).`);
+    if (!rider) errors.push(`Row ${lineNumber}: rider "${get("rider")}" was not found in the active rider directory.`);
+    if (startClock === null || endClock === null || duration === null || !rider || !Number.isInteger(stintNumber) || stintNumber < 1) return;
+    if (previousStart !== null && startClock < previousStart) dayOffset += 1;
+    const start = rosterDateTime(eventRecord.start_date, startClock, dayOffset);
+    let endDayOffset = dayOffset + (endClock <= startClock ? 1 : 0);
+    const end = rosterDateTime(eventRecord.start_date, endClock, endDayOffset);
+    const actualDuration = (end.getTime() - start.getTime()) / 60000;
+    if (Math.abs(actualDuration - duration) > 0.01) errors.push(`Row ${lineNumber}: duration says ${duration} minutes but the times span ${actualDuration} minutes.`);
+    if (previousStart !== null && start.getTime() < previousStart) errors.push(`Row ${lineNumber}: roster times are not in chronological order.`);
+    parsed.push({
+      roster_id: document.querySelector("#manual-roster-select").value,
+      stint_number: stintNumber,
+      rider_id: rider.id,
+      scheduled_start: start.toISOString(),
+      scheduled_end: end.toISOString(),
+      roster_notes: null,
+      rider_name: displayRiderName(rider),
+      start_label: get("timeIn"),
+      end_label: get("timeOut"),
+      duration
+    });
+    previousStart = start.getTime();
+  });
+  const seenNumbers = new Set();
+  parsed.forEach(item => {
+    if (seenNumbers.has(item.stint_number)) errors.push(`Stint number ${item.stint_number} appears more than once in the pasted roster.`);
+    seenNumbers.add(item.stint_number);
+  });
+  return { rows: parsed, errors, event: eventRecord };
+}
+
+function renderBulkRosterPreview(result) {
+  const preview = document.querySelector("#bulk-roster-preview");
+  preview.replaceChildren();
+  preview.hidden = false;
+  const heading = document.createElement("strong");
+  heading.textContent = result.errors.length
+    ? `Check required: ${result.errors.length} issue(s) found`
+    : `Ready to import: ${result.rows.length} stints`;
+  preview.append(heading);
+  if (result.errors.length) {
+    const list = document.createElement("ul");
+    result.errors.forEach(message => {
+      const item = document.createElement("li");
+      item.textContent = message;
+      list.append(item);
+    });
+    preview.append(list);
+    bulkRosterPreview = null;
+    return;
+  }
+  const table = document.createElement("div");
+  table.className = "roster-import-table";
+  const header = document.createElement("div");
+  header.className = "roster-import-row roster-import-header";
+  ["#", "Time in", "Time out", "Duration", "Rider"].forEach(value => {
+    const cell = document.createElement("span");
+    cell.textContent = value;
+    header.append(cell);
+  });
+  table.append(header);
+  result.rows.forEach(row => {
+    const line = document.createElement("div");
+    line.className = "roster-import-row";
+    [row.stint_number, row.start_label, row.end_label, `${row.duration} min`, row.rider_name].forEach(value => {
+      const cell = document.createElement("span");
+      cell.textContent = value;
+      line.append(cell);
+    });
+    table.append(line);
+  });
+  preview.append(table);
+  bulkRosterPreview = result.rows;
+  const importButton = document.createElement("button");
+  importButton.type = "button";
+  importButton.className = "primary-button";
+  importButton.id = "confirm-bulk-roster-import";
+  importButton.textContent = "Import all stints";
+  importButton.addEventListener("click", importBulkRoster);
+  preview.append(importButton);
+}
+
+async function importBulkRoster() {
+  if (!rosterCanManage() || !bulkRosterPreview?.length) return;
+  const rosterId = document.querySelector("#manual-roster-select").value;
+  if (!rosterId || bulkRosterPreview.some(row => row.roster_id !== rosterId)) {
+    setRosterMessage("#bulk-roster-message", "Select the same draft roster and check the pasted schedule again.", true);
+    bulkRosterPreview = null;
+    return;
+  }
+  const button = document.querySelector("#confirm-bulk-roster-import");
+  button.disabled = true;
+  button.textContent = "Checking existing stints…";
+  const { data: existing, error: existingError } = await supabaseClient.from("roster_stints")
+    .select("stint_number,rider_id,scheduled_start,scheduled_end")
+    .eq("roster_id", rosterId);
+  if (existingError) {
+    button.disabled = false;
+    button.textContent = "Import all stints";
+    setRosterMessage("#bulk-roster-message", "Existing roster entries could not be checked. Nothing was imported.", true);
+    return;
+  }
+  const existingNumbers = new Set((existing || []).map(item => Number(item.stint_number)));
+  const conflicts = [];
+  bulkRosterPreview.forEach(row => {
+    if (existingNumbers.has(row.stint_number)) conflicts.push(`Stint number ${row.stint_number} already exists in this draft.`);
+    const overlap = (existing || []).find(item => item.rider_id === row.rider_id &&
+      new Date(row.scheduled_start) < new Date(item.scheduled_end) &&
+      new Date(row.scheduled_end) > new Date(item.scheduled_start));
+    if (overlap) conflicts.push(`${row.rider_name} already has an overlapping stint in this draft.`);
+  });
+  const incoming = [...bulkRosterPreview].sort((a,b)=>new Date(a.scheduled_start)-new Date(b.scheduled_start));
+  for (let i=0;i<incoming.length;i++) {
+    for (let j=i+1;j<incoming.length;j++) {
+      if (incoming[i].rider_id === incoming[j].rider_id &&
+        new Date(incoming[i].scheduled_start) < new Date(incoming[j].scheduled_end) &&
+        new Date(incoming[i].scheduled_end) > new Date(incoming[j].scheduled_start)) {
+        conflicts.push(`${incoming[i].rider_name} has overlapping stints ${incoming[i].stint_number} and ${incoming[j].stint_number}.`);
+      }
+    }
+  }
+  if (conflicts.length) {
+    button.disabled = false;
+    button.textContent = "Import all stints";
+    const preview = document.querySelector("#bulk-roster-preview");
+    const list = document.createElement("ul");
+    list.className = "roster-import-errors";
+    conflicts.forEach(message => { const li=document.createElement("li"); li.textContent=message; list.append(li); });
+    preview.append(list);
+    setRosterMessage("#bulk-roster-message", "Import stopped. Resolve the conflicts before importing.", true);
+    return;
+  }
+  button.textContent = "Importing…";
+  const payload = bulkRosterPreview.map(({rider_name,start_label,end_label,duration,...row})=>row);
+  const { error } = await supabaseClient.from("roster_stints").insert(payload);
+  if (error) {
+    button.disabled = false;
+    button.textContent = "Import all stints";
+    setRosterMessage("#bulk-roster-message", "The import failed and no success was reported. Check the draft before trying again.", true);
+    return;
+  }
+  const count = payload.length;
+  bulkRosterPreview = null;
+  document.querySelector("#bulk-roster-data").value = "";
+  document.querySelector("#bulk-roster-preview").hidden = true;
+  setRosterMessage("#bulk-roster-message", `${count} stints imported successfully into the draft roster. Review them below before publishing.`);
+  await loadManualStints();
+  await loadRosters();
+  document.querySelector("#manual-roster-select").value = rosterId;
+  document.querySelector("#manual-stint-form").elements.roster_id.value = rosterId;
+}
+
+document.querySelector("#preview-bulk-roster").addEventListener("click", () => {
+  if (!rosterCanManage()) return;
+  const rosterId = document.querySelector("#manual-roster-select").value;
+  const result = parseBulkRoster(document.querySelector("#bulk-roster-data").value, rosterId);
+  if (result.error) {
+    bulkRosterPreview = null;
+    document.querySelector("#bulk-roster-preview").hidden = true;
+    setRosterMessage("#bulk-roster-message", result.error, true);
+    return;
+  }
+  renderBulkRosterPreview(result);
+  setRosterMessage("#bulk-roster-message", result.errors.length ? "Fix the issues listed in the preview." : "Check the preview, then choose Import all stints.");
+});
+document.querySelector("#manual-roster-select").addEventListener("change", () => {
+  bulkRosterPreview = null;
+  document.querySelector("#bulk-roster-preview").hidden = true;
+  document.querySelector("#bulk-roster-message").textContent = "";
+});
+document.querySelector("#bulk-roster-data").addEventListener("input", () => {
+  bulkRosterPreview = null;
+  document.querySelector("#bulk-roster-preview").hidden = true;
+  document.querySelector("#bulk-roster-message").textContent = "Roster changed. Check it again before importing.";
+});
+
 document.querySelector("#refresh-rosters").addEventListener("click", loadRosters);
 document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
 document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
