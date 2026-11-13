@@ -846,7 +846,7 @@ function parseBulkRoster(text, eventId) {
   const headers = rows[0].map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ""));
   const findColumn = names => headers.findIndex(header => names.includes(header));
   const columns = {
-    number: findColumn(["#", "stint", "stintnumber", "number"]),
+    number: headers[0] === "" ? 0 : findColumn(["stint", "stintnumber", "number"]),
     stintTime: findColumn(["stinttime", "starttime"]),
     duration: findColumn(["duration"]),
     timeIn: findColumn(["timein", "start", "scheduledstart"]),
@@ -863,7 +863,8 @@ function parseBulkRoster(text, eventId) {
   });
   const parsed = [];
   const errors = [];
-  let previousStart = null;
+  let previousStartClock = null;
+  let previousStartTimestamp = null;
   let dayOffset = 0;
   rows.slice(1).forEach((cells, index) => {
     const lineNumber = index + 2;
@@ -881,13 +882,13 @@ function parseBulkRoster(text, eventId) {
     if (duration === null || duration <= 0) errors.push(`Row ${lineNumber}: duration must be a positive number of minutes (for example, 40 Minutes).`);
     if (!rider) errors.push(`Row ${lineNumber}: rider "${get("rider")}" was not found in the active rider directory.`);
     if (startClock === null || endClock === null || duration === null || !rider || !Number.isInteger(stintNumber) || stintNumber < 1) return;
-    if (previousStart !== null && startClock < previousStart) dayOffset += 1;
+    if (previousStartClock !== null && startClock < previousStartClock) dayOffset += 1;
     const start = rosterDateTime(eventRecord.start_date, startClock, dayOffset);
     let endDayOffset = dayOffset + (endClock <= startClock ? 1 : 0);
     const end = rosterDateTime(eventRecord.start_date, endClock, endDayOffset);
     const actualDuration = (end.getTime() - start.getTime()) / 60000;
     if (Math.abs(actualDuration - duration) > 0.01) errors.push(`Row ${lineNumber}: duration says ${duration} minutes but the times span ${actualDuration} minutes.`);
-    if (previousStart !== null && start.getTime() < previousStart) errors.push(`Row ${lineNumber}: roster times are not in chronological order.`);
+    if (previousStartTimestamp !== null && start.getTime() < previousStartTimestamp) errors.push(`Row ${lineNumber}: roster times are not in chronological order.`);
     parsed.push({
       roster_id: document.querySelector("#manual-roster-select").value,
       stint_number: stintNumber,
@@ -900,7 +901,8 @@ function parseBulkRoster(text, eventId) {
       end_label: get("timeOut"),
       duration
     });
-    previousStart = start.getTime();
+    previousStartClock = startClock;
+    previousStartTimestamp = start.getTime();
   });
   const seenNumbers = new Set();
   parsed.forEach(item => {
