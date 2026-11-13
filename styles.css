@@ -69,3 +69,5 @@
 .roster-import-header{position:sticky;top:0;background:#101512;color:var(--muted);font-weight:800}
 .roster-import-preview>.primary-button{margin-top:5px}
 @media(max-width:550px){.roster-import-row{grid-template-columns:25px 55px 55px 55px minmax(75px,1fr);gap:5px;font-size:9px}}
+
+.roster-version-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.roster-delete-button{border-color:#704137;color:#ffb6a9}.roster-delete-button:hover{border-color:#ff8d78;color:#ffd0c7}
