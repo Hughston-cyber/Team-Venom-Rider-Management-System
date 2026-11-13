@@ -54,3 +54,8 @@ Open http://localhost:8000.
 - Row Level Security is the authority for data access; hiding controls in the interface is not security.
 - Keep this repository private.
 - Use test records until the system has been validated.
+
+
+## Bulk roster import
+
+The Rosters module supports pasting a tab-separated roster copied directly from Excel. Use the columns `#`, `Stint time`, `Duration`, `Time in`, `Time out`, and `Rider`. Select a draft roster first, then paste the header and all stint rows, check the preview, and import. The event must have a start date. Overnight times roll into the following date automatically. The importer validates rider names, time formats, matching Stint time/Time in values, declared durations, duplicate stint numbers, and rider overlaps against existing and incoming stints. Imports remain drafts and must be reviewed and published manually. This browser-side import inserts the parsed stints as one batch; it does not provide a database transaction guarantee if the database rejects a batch.
