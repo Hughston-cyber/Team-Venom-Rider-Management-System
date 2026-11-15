@@ -23,6 +23,7 @@ const pageCopy = {
 
 let currentRoles = [];
 let ridersCache = [];
+let editingRiderId = null;
 
 function showMessage(message, isError = true) {
   loginMessage.textContent = message;
@@ -127,6 +128,22 @@ function renderRiders() {
     badge.className = `status-badge status-${rider.status}`;
     badge.textContent = rider.status;
     row.append(identity, number, badge);
+    if (canManageRiders()) {
+      const actions = document.createElement("div");
+      actions.className = "rider-row-actions";
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "text-button";
+      edit.textContent = "Edit";
+      edit.addEventListener("click", event => { event.stopPropagation(); startRiderEdit(rider.id); });
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "text-button rider-delete-button";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", event => { event.stopPropagation(); deleteRider(rider.id); });
+      actions.append(edit, remove);
+      row.append(actions);
+    }
     row.addEventListener("click", () => openRiderProfile(rider.id));
     row.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRiderProfile(rider.id); } });
     list.append(row);
@@ -262,6 +279,69 @@ document.querySelector("#back-to-riders").addEventListener("click", () => {
   selectView("riders");
 });
 
+async function startRiderEdit(riderId) {
+  if (!canManageRiders()) return;
+  const rider = ridersCache.find(item => item.id === riderId);
+  if (!rider) return;
+  editingRiderId = rider.id;
+  const form = document.querySelector("#rider-form");
+  form.elements.first_name.value = rider.first_name || "";
+  form.elements.last_name.value = rider.last_name || "";
+  form.elements.preferred_name.value = rider.preferred_name || "";
+  form.elements.rider_number.value = rider.rider_number || "";
+  form.elements.status.value = rider.status || "active";
+  form.elements.photo.value = "";
+  document.querySelector("#rider-form-panel").hidden = false;
+  document.querySelector("#rider-form-panel .eyebrow").textContent = "EDIT DATABASE RECORD";
+  document.querySelector("#rider-form-panel h2").textContent = "Edit rider";
+  document.querySelector("#save-rider-button").textContent = "Save changes";
+  document.querySelector("#rider-form-message").textContent = "Leave the photograph field empty to keep the current photo.";
+  document.querySelector("#rider-form-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+  form.elements.first_name.focus();
+}
+
+async function deleteRider(riderId) {
+  if (!canManageRiders()) return;
+  const rider = ridersCache.find(item => item.id === riderId);
+  if (!rider) return;
+  const name = rider.preferred_name ? `${rider.preferred_name} ${rider.last_name}` : `${rider.first_name} ${rider.last_name}`;
+  const relatedChecks = await Promise.all([
+    supabaseClient.from("race_stints").select("id", { count: "exact", head: true }).eq("rider_id", riderId),
+    supabaseClient.from("roster_stints").select("id", { count: "exact", head: true }).eq("rider_id", riderId),
+    supabaseClient.from("event_riders").select("event_id", { count: "exact", head: true }).eq("rider_id", riderId)
+  ]);
+  if (relatedChecks.some(result => result.error)) {
+    alert("The system could not verify this rider's history. Nothing was deleted.");
+    return;
+  }
+  const historyCount = relatedChecks.reduce((sum, result) => sum + (result.count || 0), 0);
+  if (historyCount > 0) {
+    alert(`${name} has ${historyCount} linked race or roster record(s). To protect Team Venom's history, permanent deletion is blocked. Edit the rider and change their status to Inactive or Retired instead.`);
+    return;
+  }
+  if (!confirm(`Permanently delete ${name}? This cannot be undone.`)) return;
+  if (rider.photo_path) {
+    const { error: photoError } = await supabaseClient.storage.from("rider-photos").remove([rider.photo_path]);
+    if (photoError) {
+      alert("The rider photograph could not be removed, so the rider record was kept.");
+      return;
+    }
+  }
+  const { error: notesError } = await supabaseClient.from("rider_private_notes").delete().eq("rider_id", riderId);
+  if (notesError) {
+    alert("Private notes could not be cleared, so the rider record was kept.");
+    return;
+  }
+  const { error } = await supabaseClient.from("riders").delete().eq("id", riderId);
+  if (error) {
+    alert("The rider could not be deleted. Check your permissions and try again.");
+    return;
+  }
+  await loadRiders();
+  document.querySelector("#rider-form-message").textContent = `${name} was deleted.`;
+  document.querySelector("#rider-form-message").className = "inline-message success-message";
+}
+
 async function loadRiders() {
   const loading = document.querySelector("#rider-loading");
   const list = document.querySelector("#rider-list");
@@ -293,12 +373,21 @@ document.querySelector("#rider-search").addEventListener("input", renderRiders);
 document.querySelector("#rider-status-filter").addEventListener("change", renderRiders);
 document.querySelector("#refresh-riders").addEventListener("click", loadRiders);
 document.querySelector("#add-rider-toggle").addEventListener("click", () => {
+  editingRiderId = null;
+  document.querySelector("#rider-form").reset();
+  document.querySelector("#rider-form-panel .eyebrow").textContent = "NEW DATABASE RECORD";
+  document.querySelector("#rider-form-panel h2").textContent = "Add a rider";
+  document.querySelector("#save-rider-button").textContent = "Save rider";
   document.querySelector("#rider-form-panel").hidden = false;
   document.querySelector("#rider-form").elements.first_name.focus();
 });
 document.querySelector("#cancel-add-rider").addEventListener("click", () => {
+  editingRiderId = null;
   document.querySelector("#rider-form-panel").hidden = true;
   document.querySelector("#rider-form").reset();
+  document.querySelector("#rider-form-panel .eyebrow").textContent = "NEW DATABASE RECORD";
+  document.querySelector("#rider-form-panel h2").textContent = "Add a rider";
+  document.querySelector("#save-rider-button").textContent = "Save rider";
   document.querySelector("#rider-form-message").textContent = "";
 });
 document.querySelector("#rider-form").addEventListener("submit", async event => {
@@ -321,6 +410,47 @@ document.querySelector("#rider-form").addEventListener("submit", async event => 
       message.className = "inline-message error-state";
       return;
     }
+  }
+  if (editingRiderId) {
+    submit.disabled = true;
+    submit.textContent = "Saving…";
+    message.textContent = "";
+    let newPhotoPath = null;
+    if (photo && photo.size) {
+      const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
+      newPhotoPath = `${editingRiderId}/profile-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabaseClient.storage.from("rider-photos").upload(newPhotoPath, photo, { contentType: photo.type, upsert: false });
+      if (uploadError) {
+        submit.disabled = false;
+        submit.textContent = "Save changes";
+        message.textContent = "The new photograph could not be uploaded. No rider details were changed.";
+        message.className = "inline-message error-state";
+        return;
+      }
+      values.photo_path = newPhotoPath;
+    }
+    const previousPhotoPath = ridersCache.find(item => item.id === editingRiderId)?.photo_path;
+    const { error: updateError } = await supabaseClient.from("riders").update(values).eq("id", editingRiderId);
+    if (updateError) {
+      if (newPhotoPath) await supabaseClient.storage.from("rider-photos").remove([newPhotoPath]);
+      submit.disabled = false;
+      submit.textContent = "Save changes";
+      message.textContent = "Rider details could not be updated. Check your access and try again.";
+      message.className = "inline-message error-state";
+      return;
+    }
+    if (newPhotoPath && previousPhotoPath) await supabaseClient.storage.from("rider-photos").remove([previousPhotoPath]);
+    editingRiderId = null;
+    submit.disabled = false;
+    submit.textContent = "Save rider";
+    form.reset();
+    document.querySelector("#rider-form-panel").hidden = true;
+    document.querySelector("#rider-form-panel .eyebrow").textContent = "NEW DATABASE RECORD";
+    document.querySelector("#rider-form-panel h2").textContent = "Add a rider";
+    message.textContent = "Rider details updated successfully.";
+    message.className = "inline-message success-message";
+    await loadRiders();
+    return;
   }
   submit.disabled = true;
   submit.textContent = "Saving…";
