@@ -145,7 +145,7 @@ function renderRiders() {
       row.append(actions);
     }
     row.addEventListener("click", () => openRiderProfile(rider.id));
-    row.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRiderProfile(rider.id); } });
+    row.addEventListener("keydown", event => { if (event.target === row && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openRiderProfile(rider.id); } });
     list.append(row);
   });
 }
@@ -320,13 +320,6 @@ async function deleteRider(riderId) {
     return;
   }
   if (!confirm(`Permanently delete ${name}? This cannot be undone.`)) return;
-  if (rider.photo_path) {
-    const { error: photoError } = await supabaseClient.storage.from("rider-photos").remove([rider.photo_path]);
-    if (photoError) {
-      alert("The rider photograph could not be removed, so the rider record was kept.");
-      return;
-    }
-  }
   const { error: notesError } = await supabaseClient.from("rider_private_notes").delete().eq("rider_id", riderId);
   if (notesError) {
     alert("Private notes could not be cleared, so the rider record was kept.");
@@ -336,6 +329,9 @@ async function deleteRider(riderId) {
   if (error) {
     alert("The rider could not be deleted. Check your permissions and try again.");
     return;
+  }
+  if (rider.photo_path) {
+    await supabaseClient.storage.from("rider-photos").remove([rider.photo_path]);
   }
   await loadRiders();
   document.querySelector("#rider-form-message").textContent = `${name} was deleted.`;
