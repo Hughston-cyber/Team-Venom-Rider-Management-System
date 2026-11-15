@@ -71,3 +71,5 @@
 @media(max-width:550px){.roster-import-row{grid-template-columns:25px 55px 55px 55px minmax(75px,1fr);gap:5px;font-size:9px}}
 
 .roster-version-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.roster-delete-button{border-color:#704137;color:#ffb6a9}.roster-delete-button:hover{border-color:#ff8d78;color:#ffd0c7}
+
+.rider-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}.rider-delete-button{color:#ffb6a9}.rider-delete-button:hover{color:#ffd0c7;border-color:#ff8d78}@media(max-width:640px){.rider-row-actions{width:100%;justify-content:flex-end}}
