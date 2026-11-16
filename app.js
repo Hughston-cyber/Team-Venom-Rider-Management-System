@@ -1652,7 +1652,8 @@ function renderLiveRaceDisplay() {
   if (undoButton) undoButton.disabled = !canManageOperations() || !liveRaceStateByEvent[chosenEventId]?.previous_roster_stint_id;
   const status = document.querySelector("#changeover-status");
   if (status && liveRaceStateByEvent[chosenEventId]?.changed_at) {
-    status.textContent = "Last changeover · " + liveTime(liveRaceStateByEvent[chosenEventId].changed_at);
+    const state = liveRaceStateByEvent[chosenEventId];
+    status.textContent = (state.previous_roster_stint_id ? "Last changeover · " : "Last changeover undone · ") + liveTime(state.changed_at);
   } else if (status && !status.dataset.message) {
     status.textContent = "Changeovers sync to all connected devices.";
   }
