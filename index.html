@@ -305,16 +305,18 @@
         <div id="notifications-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM COMMUNICATIONS</p><h1>Notifications<span>.</span></h1><p class="subheading">View in-app updates and send team announcements.</p></div><div class="heading-actions"><button class="text-button" id="refresh-notifications" type="button">↻ Refresh</button></div></div>
           <section class="panel roster-form-panel" id="announcement-panel">
-            <div class="panel-heading"><div><p class="eyebrow">ADMIN / MANAGER</p><h2>Send an in-app announcement</h2></div><span class="panel-tag">IN-APP ONLY</span></div>
+            <div class="panel-heading"><div><p class="eyebrow">ADMINISTRATOR</p><h2>Send a team announcement</h2></div><span class="panel-tag">TEAM-WIDE</span></div>
             <form id="announcement-form" class="roster-form-grid">
+              <label>Sender type<select name="type"><option value="team_announcement">Team Communications</option><option value="emergency_announcement">Emergency Operations</option></select></label>
               <label>Title<input name="title" maxlength="120" required placeholder="Announcement title"></label>
               <label class="announcement-message-field">Message<input name="message" maxlength="2000" required placeholder="Write the team update"></label>
               <div class="form-actions"><button class="primary-button" id="send-announcement" type="submit">Send announcement</button></div>
             </form>
+            <p class="profile-note-help">Emergency Operations is for urgent operational safety updates. Push delivery is not guaranteed and does not replace direct emergency communication.</p>
             <p class="inline-message" id="announcement-message" role="status"></p>
           </section>
           <section class="panel"><div class="panel-heading"><div><p class="eyebrow">YOUR INBOX</p><h2>Recent notifications</h2></div></div><p class="inline-message" id="notification-message" role="status"></p><div id="notification-list" class="record-list"><div class="empty-state">Loading notifications…</div></div></section>
-          <p class="profile-note-help">Announcements appear in this website's inbox. Email and push delivery are not configured in this release.</p>
+          <p class="profile-note-help">Team updates appear in your in-app inbox. Push alerts are sent to registered devices when the account and device have push enabled.</p>
         </div>
         <div id="settings-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">ACCOUNT / PREFERENCES</p><h1>Settings<span>.</span></h1><p class="subheading">Review your account access and notification preferences.</p></div></div>
@@ -328,10 +330,14 @@
             <section class="panel"><div class="panel-heading"><div><p class="eyebrow">COMMUNICATIONS</p><h2>Notification preferences</h2></div></div>
               <form id="notification-preferences-form" class="preferences-form">
                 <label><input type="checkbox" name="in_app" checked> In-app notifications</label>
-                <label><input type="checkbox" name="email"> Email notifications <small>Preference only. Delivery is not configured.</small></label>
-                <label><input type="checkbox" name="push"> Push notifications <small>Preference only. Delivery is not configured.</small></label>
+                <label><input type="checkbox" name="email"> Email notifications <small>Email delivery is not configured.</small></label>
+                <label><input type="checkbox" name="push"> Push notifications <small>Controls push delivery for this account's registered devices.</small></label>
                 <button class="primary-button" id="save-preferences" type="submit">Save preferences</button>
               </form>
+              <div class="push-device-control">
+                <button class="text-button" id="toggle-push-device" type="button">Enable push on this device</button>
+                <p class="inline-message" id="push-device-message" role="status">Push notifications have not been enabled on this device.</p>
+              </div>
               <p class="inline-message" id="preferences-message" role="status"></p>
             </section>
           </div>
