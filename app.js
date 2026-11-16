@@ -505,21 +505,9 @@ async function showAuthenticatedWorkspace(session) {
     appShell.hidden = true;
     authScreen.hidden = false;
     loginForm.hidden = false;
-    document.querySelector("#invite-password-form").hidden = true;
     return;
   }
 
-  if (session.user.user_metadata?.must_set_password === true) {
-    appShell.hidden = true;
-    authScreen.hidden = false;
-    loginForm.hidden = true;
-    document.querySelector("#invite-password-form").hidden = false;
-    showMessage("Invitation accepted. Create your personal password to finish setting up your account.", false);
-    return;
-  }
-
-  loginForm.hidden = false;
-  document.querySelector("#invite-password-form").hidden = true;
   const userId = session.user.id;
   const [profileResult, roleResult] = await Promise.all([
     supabaseClient.from("member_profiles").select("display_name,status").eq("user_id", userId).maybeSingle(),
@@ -551,54 +539,33 @@ async function showAuthenticatedWorkspace(session) {
   document.querySelector("#account-management-nav").hidden = !isAdministrator();
   document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
   document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
-document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
-document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control => { control.disabled = !rosterCanManage(); });
+  document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
+  document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control => { control.disabled = !rosterCanManage(); });
   appShell.hidden = false;
   authScreen.hidden = true;
   selectView("race-day");
 }
 
-document.querySelector("#invite-password-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const password = form.elements.password.value;
-  const confirmation = form.elements.confirm_password.value;
-  const button = document.querySelector("#finish-invite-setup");
-  if (password.length < 8) { showMessage("Choose a password with at least 8 characters."); return; }
-  if (password !== confirmation) { showMessage("The passwords do not match."); return; }
-  button.disabled = true;
-  button.textContent = "Saving password…";
-  const { data: activeSession } = await supabaseClient.auth.getSession();
-  const { error } = await supabaseClient.auth.updateUser({
-    password,
-    data: { ...(activeSession.session?.user?.user_metadata || {}), must_set_password: false }
-  });
-  if (error) {
-    showMessage("Your password could not be saved: " + error.message);
-  } else {
-    form.reset();
-    const { data } = await supabaseClient.auth.getSession();
-    await showAuthenticatedWorkspace(data.session);
-  }
-  button.disabled = false;
-  button.textContent = "Create password and continue";
-});
-
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
   loginButton.disabled = true;
-  loginButton.textContent = "Signing in…";
+  loginButton.textContent = "Sending link…";
   showMessage("");
-  const email = document.querySelector("#login-email").value.trim();
-  const password = document.querySelector("#login-password").value;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const email = document.querySelector("#login-email").value.trim().toLowerCase();
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: "https://hughston-cyber.github.io/Team-Venom-Rider-Management-System/"
+    }
+  });
   if (error) {
-    showMessage("Sign-in failed. Check your email and password, then try again.");
+    showMessage("We couldn't send a sign-in link. Please check the address and try again shortly.");
   } else {
-    await showAuthenticatedWorkspace(data.session);
+    showMessage("If this email is linked to an active Team Venom account, a sign-in link has been sent. Check your inbox and spam folder.", false);
   }
   loginButton.disabled = false;
-  loginButton.innerHTML = 'Sign in <span>→</span>';
+  loginButton.innerHTML = 'Email sign-in link <span>→</span>';
 });
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {
