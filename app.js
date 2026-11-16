@@ -1601,7 +1601,7 @@ function renderLiveRiderCard(prefix, stint, emptyTitle, emptyDetail) {
   }
   name.textContent = liveRiderName(stint);
   detail.textContent = stint.rosters?.race_events?.event_name || "Team Venom";
-  time.textContent = prefix === "next" ? "TIME IN · " + liveTime(stint.scheduled_start) : "ENDS · " + liveTime(stint.scheduled_end);
+  time.textContent = prefix === "next" ? "TIME IN · " + liveTime(stint.scheduled_start) : "";
 }
 function renderLiveRaceDisplay() {
   const clock = document.querySelector("#live-current-time");
