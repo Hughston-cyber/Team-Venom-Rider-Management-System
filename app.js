@@ -534,7 +534,7 @@ document.querySelector("#manual-stint-form").querySelectorAll("input,select,butt
 document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control => { control.disabled = !rosterCanManage(); });
   appShell.hidden = false;
   authScreen.hidden = true;
-  loadOverview();
+  selectView("rosters");
 }
 
 loginForm.addEventListener("submit", async event => {
