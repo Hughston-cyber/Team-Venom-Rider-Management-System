@@ -266,7 +266,11 @@
               <div class="race-clock-heading"><p class="eyebrow">24-HOUR EVENT TIMER</p><span class="race-clock-live" id="race-clock-live-label">READY</span></div>
               <time id="race-countdown" class="race-countdown">24:00:00</time>
               <p class="race-clock-status" id="race-clock-status">The race clock is ready to start.</p>
-              <button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
+              <div class="race-clock-actions">
+                <button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
+                <button class="text-button race-clock-stop-button" id="stop-race-clock-button" type="button" disabled>STOP CLOCK</button>
+                <button class="text-button race-clock-reset-button" id="restart-race-clock-button" type="button" disabled>↻ RESTART CLOCK</button>
+              </div>
             </article>
             <article class="stat-card live-admin-card">
               <div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div>
