@@ -268,8 +268,13 @@
               <p class="race-clock-status" id="race-clock-status">The race clock is ready to start.</p>
               <div class="race-clock-actions">
                 <button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
-                <button class="text-button race-clock-stop-button" id="stop-race-clock-button" type="button" disabled>STOP CLOCK</button>
-                <button class="text-button race-clock-reset-button" id="restart-race-clock-button" type="button" disabled>↻ RESTART CLOCK</button>
+                <details class="race-clock-more-controls" id="race-clock-more-controls" hidden>
+                  <summary>MORE CLOCK CONTROLS</summary>
+                  <div class="race-clock-more-menu">
+                    <button class="text-button race-clock-stop-button" id="stop-race-clock-button" type="button" disabled>STOP CLOCK</button>
+                    <button class="text-button race-clock-reset-button" id="restart-race-clock-button" type="button" disabled>↻ RESTART CLOCK</button>
+                  </div>
+                </details>
               </div>
             </article>
             <article class="stat-card live-admin-card">
