@@ -1648,6 +1648,8 @@ function renderLiveRaceDisplay() {
   renderLiveRiderCard("next", next, "No upcoming rider", "No future published stint found");
   const button = document.querySelector("#rider-changeover-button");
   if (button) button.disabled = !canManageOperations() || !current || !next;
+  const undoButton = document.querySelector("#undo-rider-changeover-button");
+  if (undoButton) undoButton.disabled = !canManageOperations() || !liveRaceStateByEvent[chosenEventId]?.previous_roster_stint_id;
   const status = document.querySelector("#changeover-status");
   if (status && liveRaceStateByEvent[chosenEventId]?.changed_at) {
     status.textContent = "Last changeover · " + liveTime(liveRaceStateByEvent[chosenEventId].changed_at);
@@ -1674,6 +1676,25 @@ async function performRiderChangeover() {
   status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
   renderLiveRaceDisplay();
 }
+async function undoRiderChangeover() {
+  if (!canManageOperations() || !liveSelectedEventId || !liveRaceStateByEvent[liveSelectedEventId]?.previous_roster_stint_id) return;
+  const button = document.querySelector("#undo-rider-changeover-button");
+  const status = document.querySelector("#changeover-status");
+  button.disabled = true;
+  button.textContent = "Undoing…";
+  const { data, error } = await supabaseClient.rpc("undo_live_changeover", { p_event_id: liveSelectedEventId });
+  button.textContent = "↶ UNDO CHANGEOVER";
+  if (error) {
+    status.textContent = error.message || "The last changeover could not be undone.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "Changeover undone · " + liveTime(data?.changed_at || new Date().toISOString());
+  renderLiveRaceDisplay();
+}
 function setupLiveRaceRealtime() {
   if (liveRaceChannel) return;
   liveRaceChannel = supabaseClient.channel("live-race-state-sync")
@@ -1693,7 +1714,7 @@ async function loadRaceDay() {
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("race_stints").select("id,event_id,rider_id,actual_start,actual_end,laps_completed,best_lap_seconds,entry_notes,riders(first_name,last_name,preferred_name),race_events(event_name)").order("created_at",{ascending:false}).limit(100),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
-    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,changed_at,changed_by")
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by")
   ]);
   if (rosterResult.error || recordResult.error || ridersResult.error) {
     list.textContent = "Race-day data could not be loaded. Check database access and refresh.";
@@ -1832,6 +1853,7 @@ async function savePreferences(event) {
 }
 document.querySelector("#race-record-form").addEventListener("submit",saveRaceRecord);
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
+document.querySelector("#undo-rider-changeover-button").addEventListener("click",undoRiderChangeover);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
 document.querySelector("#refresh-performance").addEventListener("click",loadPerformance);
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
