@@ -22,23 +22,12 @@
       <div class="auth-brand"><span class="brand-mark">V</span><div><strong>TEAM <em>VENOM</em></strong><small>RIDER OPERATIONS</small></div></div>
       <p class="eyebrow">SECURE TEAM ACCESS</p>
       <h1>Welcome back<span>.</span></h1>
-      <p class="auth-copy">Sign in with your authorised Team Venom account to access rider and roster operations.</p>
+      <p class="auth-copy">Access your authorised Team Venom account using a secure one-time email link.</p>
       <form id="login-form">
-        <label for="login-email">Email address</label>
-        <input id="login-email" name="email" type="email" autocomplete="username" required>
-        <label for="login-password">Password</label>
-        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
-        <button class="auth-submit" id="login-submit" type="submit">Sign in <span>→</span></button>
-      </form>
-      <form id="invite-password-form" hidden>
-        <p class="eyebrow">INVITATION ACCEPTED</p>
-        <h2>Create your password</h2>
-        <p class="auth-copy">Choose a personal password for your Team Venom account. Do not share it with anyone.</p>
-        <label for="invite-password">New password</label>
-        <input id="invite-password" name="password" type="password" minlength="8" autocomplete="new-password" required>
-        <label for="invite-confirm-password">Confirm password</label>
-        <input id="invite-confirm-password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" required>
-        <button class="auth-submit" id="finish-invite-setup" type="submit">Create password and continue <span>→</span></button>
+        <label for="login-email">Registered email address</label>
+        <input id="login-email" name="email" type="email" autocomplete="email" required>
+        <p class="auth-copy auth-login-hint">We'll send a secure, one-time sign-in link to your registered email address. No password needed.</p>
+        <button class="auth-submit" id="login-submit" type="submit">Email sign-in link <span>→</span></button>
       </form>
       <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       <p class="auth-foot">Private workspace · Access is managed by Team Venom administrators</p>
