@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Team Venom Rider Management System",
+  "short_name": "Team Venom",
+  "description": "Team Venom rider, roster and race-day operations.",
+  "lang": "en-AU",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080b09",
+  "theme_color": "#080b09",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
