@@ -685,7 +685,7 @@ async function previewRosterVersion(roster, previewNode) {
     const details = document.createElement("div");
     details.className = "roster-preview-time";
     const stintLabel = document.createElement("strong");
-    stintLabel.textContent = `Stint ${stint.stint_number}`;
+    stintLabel.textContent = `Time in · ${new Date(stint.scheduled_start).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
     const times = document.createElement("small");
     times.textContent = `${new Date(stint.scheduled_start).toLocaleString("en-AU")} – ${new Date(stint.scheduled_end).toLocaleString("en-AU")}`;
     details.append(stintLabel, times);
