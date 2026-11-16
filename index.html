@@ -40,6 +40,7 @@
         <button class="nav-link active" data-view="overview"><span>▦</span> Overview</button>
         <button class="nav-link" data-view="riders"><span>♙</span> Riders</button>
         <button class="nav-link" data-view="rosters"><span>▤</span> Rosters</button>
+        <button class="nav-link" data-view="roster-versions"><span>▧</span> Roster versions</button>
         <button class="nav-link" data-view="race-day"><span>◷</span> Race day</button>
         <button class="nav-link" data-view="performance"><span>↗</span> Performance</button>
         <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
@@ -158,7 +159,7 @@
         <div id="rosters-content" hidden>
           <div class="page-heading">
             <div><p class="eyebrow">TEAM OPERATIONS / SCHEDULING</p><h1>Roster management<span>.</span></h1><p class="subheading">Build race rosters manually, allocate riders to stints and review draft schedules.</p></div>
-            <div class="heading-actions"><button class="primary-button" id="new-event-toggle" type="button">+ New event</button></div>
+            <div class="heading-actions"><button class="text-button" type="button" data-view="roster-versions">Manage versions →</button><button class="primary-button" id="new-event-toggle" type="button">+ New event</button></div>
           </div>
           <div class="roster-stats-grid">
             <article class="stat-card"><div class="stat-label">RACE EVENTS</div><div class="stat-value" id="roster-event-count">—</div><div class="stat-foot">Events in the database</div></article>
@@ -219,7 +220,15 @@
             <div id="manual-stint-empty" class="empty-state">Select a draft roster to view or add its stints.</div>
             <div id="manual-stint-list" class="manual-stint-list"></div>
           </div>
-          <div class="roster-summary-row"><div><p class="eyebrow">SAVED SCHEDULES</p><h2>Events and roster versions</h2></div></div>
+        </div>
+
+        <div id="roster-versions-content" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">TEAM OPERATIONS / VERSION CONTROL</p><h1>Roster versions<span>.</span></h1><p class="subheading">Manage saved schedules, create independent drafts, compare versions and publish approved rosters.</p></div>
+            <div class="heading-actions"><button class="text-button" type="button" data-view="rosters">← Back to roster builder</button><button class="text-button" id="refresh-roster-versions" type="button">↻ Refresh</button></div>
+          </div>
+          <div class="notice"><span class="notice-icon">i</span><div><strong>Draft-first version control</strong><p>Creating a draft copies an existing roster into a separate version. Published versions remain unchanged until you deliberately publish a reviewed draft.</p></div></div>
+          <div class="roster-summary-row"><div><p class="eyebrow">SAVED SCHEDULES</p><h2>Events and roster history</h2></div></div>
           <div class="panel roster-table-panel">
             <div id="roster-loading" class="empty-state">Loading roster records…</div>
             <div id="roster-list" hidden></div>
