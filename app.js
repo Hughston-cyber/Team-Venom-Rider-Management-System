@@ -1650,6 +1650,8 @@ function renderLiveRaceDisplay() {
   if (button) button.disabled = !canManageOperations() || !current || !next;
   const undoButton = document.querySelector("#undo-rider-changeover-button");
   if (undoButton) undoButton.disabled = !canManageOperations() || !liveRaceStateByEvent[chosenEventId]?.previous_roster_stint_id;
+  const restartButton = document.querySelector("#restart-live-roster-button");
+  if (restartButton) restartButton.disabled = !canManageOperations() || !chosenEventId || !chosenStints.length;
   const status = document.querySelector("#changeover-status");
   if (status && liveRaceStateByEvent[chosenEventId]?.changed_at) {
     const state = liveRaceStateByEvent[chosenEventId];
@@ -1694,6 +1696,27 @@ async function undoRiderChangeover() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "Changeover undone · " + liveTime(data?.changed_at || new Date().toISOString());
+  renderLiveRaceDisplay();
+}
+async function restartLiveRoster() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const confirmed = window.confirm("Restart the live roster from the very first published stint? This resets the shared live rider position for everyone. It does not change the saved roster or recorded race results.");
+  if (!confirmed) return;
+  const button = document.querySelector("#restart-live-roster-button");
+  const status = document.querySelector("#changeover-status");
+  button.disabled = true;
+  button.textContent = "Restarting…";
+  const { data, error } = await supabaseClient.rpc("restart_live_roster", { p_event_id: liveSelectedEventId });
+  button.textContent = "↻ RESTART ROSTER";
+  if (error) {
+    status.textContent = error.message || "The live roster could not be restarted.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "Roster restarted from the first stint · " + liveTime(data?.changed_at || new Date().toISOString());
   renderLiveRaceDisplay();
 }
 function setupLiveRaceRealtime() {
@@ -1855,6 +1878,7 @@ async function savePreferences(event) {
 document.querySelector("#race-record-form").addEventListener("submit",saveRaceRecord);
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
 document.querySelector("#undo-rider-changeover-button").addEventListener("click",undoRiderChangeover);
+document.querySelector("#restart-live-roster-button").addEventListener("click",restartLiveRoster);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
 document.querySelector("#refresh-performance").addEventListener("click",loadPerformance);
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
