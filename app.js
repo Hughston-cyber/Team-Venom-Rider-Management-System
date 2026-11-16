@@ -1948,6 +1948,7 @@ async function loadPerformance() {
 async function loadRiderAccounts() {
   const list = document.querySelector("#rider-account-list");
   const select = document.querySelector("#account-rider-select");
+  const linkSelect = document.querySelector("#account-link-rider-select");
   if (!isAdministrator()) { list.textContent = "Administrator access is required."; return; }
   list.textContent = "Loading rider accounts…";
   const { data, error } = await supabaseClient.functions.invoke("rider-account-management", { body: { action: "list" } });
@@ -1961,6 +1962,10 @@ async function loadRiderAccounts() {
   select.replaceChildren(new Option("Choose an active rider…", ""));
   available.forEach(rider => select.add(new Option(displayRiderName(rider), rider.id)));
   if (available.some(item => item.id === selected)) select.value = selected;
+  const linkSelected = linkSelect.value;
+  linkSelect.replaceChildren(new Option("Choose an active rider…", ""));
+  available.forEach(rider => linkSelect.add(new Option(displayRiderName(rider), rider.id)));
+  if (available.some(item => item.id === linkSelected)) linkSelect.value = linkSelected;
   list.replaceChildren();
   if (!riders.length) {
     list.textContent = "No rider profiles have been created yet. Add riders in the Rider directory first.";
@@ -2001,6 +2006,28 @@ async function inviteRiderAccount(event) {
   setModuleMessage("#account-management-message", "Invitation sent to " + data.email + " for " + data.rider + ". They must accept the email and create their own password.");
   await loadRiderAccounts();
 }
+async function linkExistingRiderAccount(event) {
+  event.preventDefault();
+  if (!isAdministrator()) return;
+  const form = event.currentTarget;
+  const button = document.querySelector("#link-existing-account");
+  button.disabled = true; button.textContent = "Linking account…";
+  setModuleMessage("#link-account-message", "Checking the existing Team Venom account…");
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("rider-account-management", {
+      body: { action: "link_existing", rider_id: form.elements.rider_id.value, email: form.elements.email.value.trim() }
+    });
+    if (error || data?.error) throw new Error(data?.error || error?.message || "The account could not be linked.");
+    form.reset();
+    setModuleMessage("#link-account-message", data.message || ("Linked " + data.email + " to " + data.rider + "."));
+    await loadRiderAccounts();
+  } catch (error) {
+    setModuleMessage("#link-account-message", error?.message || "The account could not be linked.", true);
+  } finally {
+    button.disabled = false; button.textContent = "Link existing account";
+  }
+}
+document.querySelector("#link-existing-account-form").addEventListener("submit", linkExistingRiderAccount);
 document.querySelector("#create-rider-account-form").addEventListener("submit", inviteRiderAccount);
 document.querySelector("#refresh-rider-accounts").addEventListener("click", loadRiderAccounts);
 
