@@ -618,6 +618,121 @@ function populateManualRosterSelect(preferredId = null) {
   document.querySelector("#manual-stint-form").elements.roster_id.value = select.value;
 }
 
+
+async function previewRosterVersion(roster, previewNode) {
+  if (!previewNode.hidden) {
+    previewNode.hidden = true;
+    previewNode.replaceChildren();
+    return;
+  }
+  previewNode.hidden = false;
+  previewNode.className = "roster-preview-details";
+  previewNode.textContent = "Loading roster preview…";
+  const { data, error } = await supabaseClient
+    .from("roster_stints")
+    .select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name)")
+    .eq("roster_id", roster.id)
+    .order("stint_number", { ascending: true });
+  if (error) {
+    previewNode.textContent = "This roster could not be previewed. Check your access and try again.";
+    return;
+  }
+  previewNode.replaceChildren();
+  const title = document.createElement("strong");
+  title.className = "roster-preview-title";
+  title.textContent = `Version ${roster.version_number} · ${(data || []).length} scheduled stint(s)`;
+  previewNode.append(title);
+  if (!data?.length) {
+    const empty = document.createElement("p");
+    empty.className = "roster-no-version";
+    empty.textContent = "No stints have been added to this roster version yet.";
+    previewNode.append(empty);
+    return;
+  }
+  data.forEach(stint => {
+    const item = document.createElement("div");
+    item.className = "roster-preview-stint";
+    const rider = stint.riders;
+    const name = rider ? displayRiderName(rider) : "Unknown rider";
+    const heading = document.createElement("strong");
+    heading.textContent = `Stint ${stint.stint_number} · ${name}`;
+    const times = document.createElement("small");
+    times.textContent = `${new Date(stint.scheduled_start).toLocaleString("en-AU")} – ${new Date(stint.scheduled_end).toLocaleString("en-AU")}`;
+    item.append(heading, times);
+    if (stint.roster_notes) {
+      const note = document.createElement("small");
+      note.textContent = stint.roster_notes;
+      item.append(note);
+    }
+    previewNode.append(item);
+  });
+}
+
+async function deleteRaceEvent(eventRecord, button) {
+  if (!rosterCanManage()) return;
+  const { count: raceRecordCount, error: raceCheckError } = await supabaseClient
+    .from("race_stints").select("id", { count: "exact", head: true }).eq("event_id", eventRecord.id);
+  if (raceCheckError) {
+    setRosterMessage("#manual-roster-message", "The event's race history could not be checked. Nothing was deleted.", true);
+    return;
+  }
+  if (raceRecordCount > 0) {
+    setRosterMessage("#manual-roster-message", `"${eventRecord.event_name}" has ${raceRecordCount} recorded race stint(s). Deletion is blocked to protect race history.`, true);
+    return;
+  }
+  const eventRosters = rosterRecords.filter(item => item.event_id === eventRecord.id);
+  const rosterIds = eventRosters.map(item => item.id);
+  let plannedStintCount = 0;
+  if (rosterIds.length) {
+    const { count, error } = await supabaseClient
+      .from("roster_stints").select("id", { count: "exact", head: true }).in("roster_id", rosterIds);
+    if (error) {
+      setRosterMessage("#manual-roster-message", "The event's scheduled stints could not be checked. Nothing was deleted.", true);
+      return;
+    }
+    plannedStintCount = count || 0;
+  }
+  const summary = `Delete event "${eventRecord.event_name}"? This permanently removes ${eventRosters.length} roster version(s), ${plannedStintCount} planned stint(s), and its event rider links. Actual race history is protected and will block deletion. This cannot be undone.`;
+  if (!confirm(summary)) return;
+  button.disabled = true;
+  button.textContent = "Deleting…";
+  if (rosterIds.length) {
+    const { error: stintError } = await supabaseClient.from("roster_stints").delete().in("roster_id", rosterIds);
+    if (stintError) {
+      button.disabled = false;
+      button.textContent = "Delete event";
+      setRosterMessage("#manual-roster-message", "Scheduled stints could not be removed. The event was kept.", true);
+      return;
+    }
+    const { error: rosterError } = await supabaseClient.from("rosters").delete().in("id", rosterIds);
+    if (rosterError) {
+      button.disabled = false;
+      button.textContent = "Delete event";
+      setRosterMessage("#manual-roster-message", "Roster versions could not be removed. The event was kept; refresh and check its remaining rosters.", true);
+      await loadRosters();
+      return;
+    }
+  }
+  const { error: eventRidersError } = await supabaseClient.from("event_riders").delete().eq("event_id", eventRecord.id);
+  if (eventRidersError) {
+    button.disabled = false;
+    button.textContent = "Delete event";
+    setRosterMessage("#manual-roster-message", "Event rider links could not be removed. The event was kept.", true);
+    await loadRosters();
+    return;
+  }
+  const { error: eventError } = await supabaseClient.from("race_events").delete().eq("id", eventRecord.id);
+  if (eventError) {
+    button.disabled = false;
+    button.textContent = "Delete event";
+    setRosterMessage("#manual-roster-message", "The event record could not be deleted. Refresh and check its remaining linked records.", true);
+    await loadRosters();
+    return;
+  }
+  setRosterMessage("#manual-roster-message", `Event "${eventRecord.event_name}" deleted.`);
+  await loadRosters();
+}
+
 function renderRosterRecords() {
   const list = document.querySelector("#roster-list");
   const empty = document.querySelector("#roster-empty");
@@ -646,6 +761,17 @@ function renderRosterRecords() {
     meta.textContent = [group.event.season_year, group.event.venue, group.event.status].filter(Boolean).join(" · ");
     heading.append(name, meta);
     section.append(heading);
+    if (rosterCanManage()) {
+      const eventActions = document.createElement("div");
+      eventActions.className = "roster-event-actions";
+      const deleteEvent = document.createElement("button");
+      deleteEvent.type = "button";
+      deleteEvent.className = "text-button roster-delete-button";
+      deleteEvent.textContent = "Delete event";
+      deleteEvent.addEventListener("click", () => deleteRaceEvent(group.event, deleteEvent));
+      eventActions.append(deleteEvent);
+      section.append(eventActions);
+    }
     if (!group.rosters.length) {
       const noRoster = document.createElement("p");
       noRoster.className = "roster-no-version";
@@ -658,9 +784,17 @@ function renderRosterRecords() {
       const info = document.createElement("span");
       info.textContent = `Version ${roster.version_number} · ${roster.status.toUpperCase()} · ${new Date(roster.created_at).toLocaleDateString("en-AU")}`;
       row.append(info);
+      const actions = document.createElement("div");
+      actions.className = "roster-version-actions";
+      const preview = document.createElement("button");
+      preview.type = "button";
+      preview.className = "text-button";
+      preview.textContent = "Preview";
+      const previewNode = document.createElement("div");
+      previewNode.hidden = true;
+      preview.addEventListener("click", () => previewRosterVersion(roster, previewNode));
+      actions.append(preview);
       if (roster.status === "draft" && rosterCanManage()) {
-        const actions = document.createElement("div");
-        actions.className = "roster-version-actions";
 
         const edit = document.createElement("button");
         edit.type = "button";
@@ -751,9 +885,9 @@ function renderRosterRecords() {
           await loadRosters();
         });
         actions.append(edit, rename, remove, publish);
-        row.append(actions);
       }
-      section.append(row);
+      row.append(actions);
+      section.append(row, previewNode);
     });
     list.append(section);
   });
