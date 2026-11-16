@@ -238,7 +238,7 @@
         </div>
 
         <div id="race-day-content" hidden>
-          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Monitor live rider handovers and event activity.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Monitor live rider handovers and the 24-hour race clock.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
           <section class="live-race-display" aria-label="Live rider handover display">
             <article class="live-rider-panel">
               <p class="eyebrow">CURRENTLY RIDING</p>
@@ -261,13 +261,22 @@
               <p class="live-rider-time" id="next-time"></p>
             </article>
           </section>
-          <div class="roster-stats-grid">
-            <article class="stat-card"><div class="stat-label">RECORDED STINTS</div><div class="stat-value" id="race-day-total">—</div><div class="stat-foot">Actual race records</div></article>
-            <article class="stat-card"><div class="stat-label">LAPS RECORDED</div><div class="stat-value" id="race-day-laps">—</div><div class="stat-foot">Across all recorded stints</div></article>
-            <article class="stat-card live-admin-card"><div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div><div class="live-admin-controls"><button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button><button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button></div><p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p></article>
-          </div>
-          <div class="roster-summary-row"><div><p class="eyebrow">RECENT ACTIVITY</p><h2>Recorded race stints</h2></div></div>
-          <div class="panel roster-table-panel"><div id="race-record-list" class="record-list"><div class="empty-state">Loading race records…</div></div></div>
+          <section class="race-clock-layout" aria-label="Race clock and live controls">
+            <article class="race-countdown-panel">
+              <div class="race-clock-heading"><p class="eyebrow">24-HOUR EVENT TIMER</p><span class="race-clock-live" id="race-clock-live-label">READY</span></div>
+              <time id="race-countdown" class="race-countdown">24:00:00</time>
+              <p class="race-clock-status" id="race-clock-status">The race clock is ready to start.</p>
+              <button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
+            </article>
+            <article class="stat-card live-admin-card">
+              <div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div>
+              <div class="live-admin-controls">
+                <button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button>
+                <button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button>
+              </div>
+              <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
+            </article>
+          </section>
         </div>
         <div id="performance-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM DATA / ANALYTICS</p><h1>Performance centre<span>.</span></h1><p class="subheading">A live summary of recorded race participation and rider performance.</p></div><div class="heading-actions"><button class="text-button" id="refresh-performance" type="button">↻ Refresh</button></div></div>
