@@ -239,6 +239,27 @@
 
         <div id="race-day-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Record actual rider stints and monitor event activity.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
+          <section class="live-race-display" aria-label="Live rider handover display">
+            <article class="live-rider-panel">
+              <p class="eyebrow">CURRENTLY RIDING</p>
+              <div class="live-rider-photo" id="current-photo"><span class="live-rider-placeholder">—</span></div>
+              <h2 id="current-name">Waiting for roster data…</h2>
+              <p class="live-rider-event" id="current-detail">Current published stint</p>
+              <p class="live-rider-time" id="current-time"></p>
+            </article>
+            <article class="live-clock-panel">
+              <p class="eyebrow">CURRENT TIME</p>
+              <time id="live-current-time" class="live-current-time">--:--:--</time>
+              <p class="live-clock-caption">LOCAL EVENT TIME</p>
+            </article>
+            <article class="live-rider-panel next-rider-panel">
+              <p class="eyebrow">NEXT RIDING</p>
+              <div class="live-rider-photo" id="next-photo"><span class="live-rider-placeholder">—</span></div>
+              <h2 id="next-name">Waiting for roster data…</h2>
+              <p class="live-rider-event" id="next-detail">Next published stint</p>
+              <p class="live-rider-time" id="next-time"></p>
+            </article>
+          </section>
           <div class="roster-stats-grid">
             <article class="stat-card"><div class="stat-label">RECORDED STINTS</div><div class="stat-value" id="race-day-total">—</div><div class="stat-foot">Actual race records</div></article>
             <article class="stat-card"><div class="stat-label">LAPS RECORDED</div><div class="stat-value" id="race-day-laps">—</div><div class="stat-foot">Across all recorded stints</div></article>
