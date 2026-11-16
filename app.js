@@ -61,7 +61,7 @@ function selectView(view) {
   if (view === "race-day") loadRaceDay();
   if (view === "performance") loadPerformance();
   if (view === "notifications") loadNotifications();
-  if (view === "accounts") loadRiderAccounts();
+  if (view === "accounts") { loadRiderAccounts(); loadTeamVenomGmailStatus(); }
   if (view === "settings") loadSettings();
 }
 document.querySelectorAll("[data-view]").forEach(button => {
@@ -1945,6 +1945,53 @@ async function loadPerformance() {
   });
 }
 
+async function loadTeamVenomGmailStatus() {
+  const status = document.querySelector("#team-venom-gmail-status");
+  const testButton = document.querySelector("#test-team-venom-gmail");
+  if (!status || !isAdministrator()) return;
+  status.textContent = "Checking Gmail connection…";
+  const { data, error } = await supabaseClient.functions.invoke("google-gmail-oauth-callback", { body: { action: "status" } });
+  if (error || data?.error) {
+    status.textContent = data?.error || error?.message || "Gmail connection status is unavailable.";
+    testButton.disabled = true;
+    return;
+  }
+  status.textContent = data.connected
+    ? "Connected: " + data.sender_email + ". Account-link emails are ready."
+    : "Gmail is not connected yet. Connect the approved sender account to enable email notifications.";
+  testButton.disabled = !data.connected;
+}
+async function connectTeamVenomGmail() {
+  if (!isAdministrator()) return;
+  const button = document.querySelector("#connect-team-venom-gmail");
+  const status = document.querySelector("#team-venom-gmail-status");
+  button.disabled = true;
+  status.textContent = "Preparing secure Google authorisation…";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("google-gmail-oauth-callback", { body: { action: "start" } });
+    if (error || data?.error || !data?.authorization_url) throw new Error(data?.error || error?.message || "Could not start Gmail authorisation.");
+    window.location.assign(data.authorization_url);
+  } catch (error) {
+    status.textContent = error?.message || "Could not connect Gmail.";
+    button.disabled = false;
+  }
+}
+async function testTeamVenomGmail() {
+  if (!isAdministrator()) return;
+  const button = document.querySelector("#test-team-venom-gmail");
+  const status = document.querySelector("#team-venom-gmail-status");
+  button.disabled = true;
+  status.textContent = "Sending a test email to your signed-in administrator address…";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("google-gmail-oauth-callback", { body: { action: "test" } });
+    if (error || data?.error) throw new Error(data?.error || error?.message || "Test email failed.");
+    status.textContent = "Test email sent to " + data.recipient + " from " + data.sender + ". Check your inbox.";
+  } catch (error) {
+    status.textContent = error?.message || "Test email failed.";
+  } finally {
+    button.disabled = false;
+  }
+}
 async function loadRiderAccounts() {
   const list = document.querySelector("#rider-account-list");
   const select = document.querySelector("#account-rider-select");
@@ -2030,6 +2077,9 @@ async function linkExistingRiderAccount(event) {
 document.querySelector("#link-existing-account-form").addEventListener("submit", linkExistingRiderAccount);
 document.querySelector("#create-rider-account-form").addEventListener("submit", inviteRiderAccount);
 document.querySelector("#refresh-rider-accounts").addEventListener("click", loadRiderAccounts);
+document.querySelector("#connect-team-venom-gmail").addEventListener("click", connectTeamVenomGmail);
+document.querySelector("#refresh-team-venom-gmail").addEventListener("click", loadTeamVenomGmailStatus);
+document.querySelector("#test-team-venom-gmail").addEventListener("click", testTeamVenomGmail);
 
 async function loadNotifications() {
   const list=document.querySelector("#notification-list");list.textContent="Loading notifications…";
