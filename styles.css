@@ -170,3 +170,5 @@
 .push-device-control{display:grid;gap:8px;margin-top:15px;padding-top:14px;border-top:1px solid var(--line)}
 .push-device-control .text-button{justify-self:start}
 .push-device-control .inline-message{margin:0;line-height:1.5}
+
+.push-device-control #test-push-device:disabled{opacity:.4;cursor:not-allowed}
