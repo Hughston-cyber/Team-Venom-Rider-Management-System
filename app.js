@@ -16,7 +16,7 @@ const pageCopy = {
   riders: ["Rider directory.", "Manage rider profiles, contact records and eligibility."],
   rosters: ["Roster management.", "Build, review and publish race rosters and stint allocations."],
   "roster-versions": ["Roster versions.", "Manage draft and published roster versions without overwriting existing schedules."],
-  "race-day": ["Race-day control.", "Record actual stints, laps and race activity."],
+  "race-day": ["Race-day control.", "Monitor live rider handovers and the 24-hour race clock."],
   performance: ["Performance centre.", "Review rider participation and team performance statistics."],
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
   settings: ["System settings.", "Review account access and notification preferences."]
@@ -1610,6 +1610,32 @@ function renderLiveRaceDisplay() {
   const clock = document.querySelector("#live-current-time");
   if (!clock) return;
   clock.textContent = new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const raceClockState = liveRaceStateByEvent[liveSelectedEventId];
+  const countdown = document.querySelector("#race-countdown");
+  const raceClockStatus = document.querySelector("#race-clock-status");
+  const raceClockLabel = document.querySelector("#race-clock-live-label");
+  const startRaceClockButton = document.querySelector("#start-race-clock-button");
+  if (countdown && raceClockStatus && raceClockLabel && startRaceClockButton) {
+    const startedAt = raceClockState?.race_clock_started_at;
+    const duration = Number(raceClockState?.race_clock_duration_seconds || 86400);
+    if (startedAt) {
+      const remaining = Math.max(0, duration - Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+      const hours = Math.floor(remaining / 3600);
+      const minutes = Math.floor((remaining % 3600) / 60);
+      const seconds = remaining % 60;
+      countdown.textContent = [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+      raceClockLabel.textContent = remaining === 0 ? "FINISHED" : "LIVE";
+      raceClockStatus.textContent = remaining === 0 ? "The 24-hour race period has finished." : "Race started · " + liveTime(startedAt);
+      startRaceClockButton.textContent = remaining === 0 ? "RACE COMPLETE" : "RACE CLOCK RUNNING";
+      startRaceClockButton.disabled = true;
+    } else {
+      countdown.textContent = "24:00:00";
+      raceClockLabel.textContent = "READY";
+      raceClockStatus.textContent = "The race clock is ready to start.";
+      startRaceClockButton.textContent = "START RACE CLOCK";
+      startRaceClockButton.disabled = !canManageOperations() || !liveSelectedEventId || !raceDayRosterStints.some(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published");
+    }
+  }
   const now = Date.now();
   const published = raceDayRosterStints
     .filter(item => item.rosters?.status === "published" && item.scheduled_start && item.scheduled_end)
@@ -1659,6 +1685,25 @@ function renderLiveRaceDisplay() {
   } else if (status && !status.dataset.message) {
     status.textContent = "Changeovers sync to all connected devices.";
   }
+}
+async function startRaceClock() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const button = document.querySelector("#start-race-clock-button");
+  const status = document.querySelector("#race-clock-status");
+  if (liveRaceStateByEvent[liveSelectedEventId]?.race_clock_started_at) return;
+  button.disabled = true;
+  button.textContent = "STARTING…";
+  const { data, error } = await supabaseClient.rpc("start_live_race_clock", { p_event_id: liveSelectedEventId });
+  if (error) {
+    status.textContent = error.message || "The race clock could not be started.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "The 24-hour race clock has started.";
+  renderLiveRaceDisplay();
 }
 async function performRiderChangeover() {
   if (!canManageOperations() || !liveSelectedEventId) return;
@@ -1731,17 +1776,14 @@ function setupLiveRaceRealtime() {
 setInterval(renderLiveRaceDisplay, 1000);
 
 async function loadRaceDay() {
-  const list = document.querySelector("#race-record-list");
-  list.textContent = "Loading race records…";
   setupLiveRaceRealtime();
-  const [rosterResult, recordResult, ridersResult, liveStateResult] = await Promise.all([
+  const [rosterResult, ridersResult, liveStateResult] = await Promise.all([
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
-    supabaseClient.from("race_stints").select("id,event_id,rider_id,actual_start,actual_end,laps_completed,best_lap_seconds,entry_notes,riders(first_name,last_name,preferred_name),race_events(event_name)").order("created_at",{ascending:false}).limit(100),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
-    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by")
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds")
   ]);
-  if (rosterResult.error || recordResult.error || ridersResult.error) {
-    list.textContent = "Race-day data could not be loaded. Check database access and refresh.";
+  if (rosterResult.error || ridersResult.error) {
+    document.querySelector("#race-countdown-status")?.textContent = "Race-day data could not be loaded. Check database access and refresh.";
     return;
   }
   if (!liveStateResult.error) liveRaceStateByEvent = Object.fromEntries((liveStateResult.data || []).map(item => [item.event_id, item]));
@@ -1751,25 +1793,8 @@ async function loadRaceDay() {
     const { data: signed, error: photoError } = await supabaseClient.storage.from("rider-photos").createSignedUrl(path, 3600);
     return { ...item, rider_photo_url: photoError ? null : signed?.signedUrl || null };
   }));
-  renderLiveRaceDisplay();
-  const records = recordResult.data || [];
-  document.querySelector("#race-day-total").textContent = records.length.toLocaleString("en-AU");
-  document.querySelector("#race-day-laps").textContent = records.reduce((sum,item)=>sum+safeNumber(item.laps_completed),0).toLocaleString("en-AU");
   document.querySelector("#race-day-riders").textContent = (ridersResult.count ?? 0).toLocaleString("en-AU");
-  list.replaceChildren();
-  if (!records.length) {
-    list.textContent = "No actual race stints have been recorded yet.";
-  } else records.forEach(item => {
-    const row = document.createElement("article");
-    row.className = "record-row";
-    const heading = document.createElement("strong");
-    heading.textContent = (item.race_events?.event_name || "Race event") + " · " + (item.riders?.preferred_name || item.riders?.first_name || "Rider") + " " + (item.riders?.last_name || "");
-    const detail = document.createElement("small");
-    detail.textContent = [item.actual_start ? formatDateTime(item.actual_start) : null,item.laps_completed !== null ? item.laps_completed + " laps" : null,item.best_lap_seconds ? "Best lap " + item.best_lap_seconds + "s" : null].filter(Boolean).join(" · ");
-    row.append(heading,detail);
-    if (item.entry_notes) { const note=document.createElement("small"); note.textContent=item.entry_notes; row.append(note); }
-    list.append(row);
-  });
+  renderLiveRaceDisplay();
 }
 async function loadPerformance() {
   const board=document.querySelector("#performance-leaderboard"); board.textContent="Loading performance data…";
@@ -1845,6 +1870,7 @@ async function savePreferences(event) {
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
 }
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
+document.querySelector("#start-race-clock-button").addEventListener("click",startRaceClock);
 document.querySelector("#undo-rider-changeover-button").addEventListener("click",undoRiderChangeover);
 document.querySelector("#restart-live-roster-button").addEventListener("click",restartLiveRoster);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
