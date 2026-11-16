@@ -131,3 +131,16 @@
 .live-admin-controls button{margin:0;min-width:0;flex:1 1 145px}
 .live-admin-card .changeover-status{text-align:left;margin-top:9px}
 @media(max-width:520px){.live-admin-controls{flex-direction:column}.live-admin-controls button{width:100%}}
+
+/* 24-hour race countdown */
+.race-clock-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:14px;margin-top:20px}
+.race-countdown-panel{min-width:0;min-height:205px;padding:24px 28px;background:#0d140f;border:1px solid #34452a;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.race-clock-heading{width:100%;display:flex;justify-content:space-between;align-items:center}
+.race-clock-heading .eyebrow{color:var(--green);margin:0}
+.race-clock-live{font-size:9px;letter-spacing:1.3px;font-weight:900;color:var(--green);border:1px solid #40552d;border-radius:3px;padding:6px 8px}
+.race-countdown{font-size:clamp(48px,7vw,76px);line-height:1.1;font-weight:900;letter-spacing:-3px;font-variant-numeric:tabular-nums;margin:13px 0 5px}
+.race-clock-status{font-size:11px;color:var(--muted);margin:4px 0 14px}
+.race-clock-start-button{min-width:210px}
+.race-clock-start-button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:850px){.race-clock-layout{grid-template-columns:1fr}.race-countdown-panel{min-height:190px}}
+@media(max-width:520px){.race-countdown-panel{padding:18px 14px}.race-countdown{font-size:clamp(42px,13vw,62px);letter-spacing:-2px}.race-clock-heading{gap:8px}}
