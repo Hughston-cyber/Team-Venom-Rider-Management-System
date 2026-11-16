@@ -1532,6 +1532,9 @@ document.querySelector("#manual-stint-form").querySelectorAll("input,select,butt
 let currentProfile = null;
 let currentUser = null;
 let raceDayRosterStints = [];
+let liveRaceStateByEvent = {};
+let liveSelectedEventId = null;
+let liveRaceChannel = null;
 
 function setModuleMessage(id, message, error = false) {
   const node = document.querySelector(id);
@@ -1611,28 +1614,92 @@ function renderLiveRaceDisplay() {
   const published = raceDayRosterStints
     .filter(item => item.rosters?.status === "published" && item.scheduled_start && item.scheduled_end)
     .sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
-  const activeIndex = published.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
-  const active = activeIndex >= 0 ? published[activeIndex] : null;
-  const next = activeIndex >= 0
-    ? published.slice(activeIndex + 1).find(item => new Date(item.scheduled_start).getTime() > now) || null
-    : published.find(item => new Date(item.scheduled_start).getTime() > now) || null;
-  renderLiveRiderCard("current", active, "No rider currently scheduled", "Waiting for the next published stint");
+  const groups = new Map();
+  published.forEach(item => {
+    const eventId = item.rosters?.event_id;
+    if (!eventId) return;
+    if (!groups.has(eventId)) groups.set(eventId, []);
+    groups.get(eventId).push(item);
+  });
+  let chosenEventId = null;
+  let chosenStints = [];
+  for (const [eventId, stints] of groups) {
+    const storedId = liveRaceStateByEvent[eventId]?.current_roster_stint_id;
+    const storedIndex = storedId ? stints.findIndex(item => item.id === storedId) : -1;
+    const activeIndex = stints.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
+    const candidateIndex = storedIndex >= 0 ? storedIndex : activeIndex >= 0 ? activeIndex : stints.findIndex(item => new Date(item.scheduled_start).getTime() > now);
+    if (candidateIndex >= 0) { chosenEventId = eventId; chosenStints = stints; break; }
+  }
+  liveSelectedEventId = chosenEventId;
+  let current = null, next = null;
+  if (chosenStints.length) {
+    const storedId = liveRaceStateByEvent[chosenEventId]?.current_roster_stint_id;
+    let currentIndex = storedId ? chosenStints.findIndex(item => item.id === storedId) : -1;
+    if (currentIndex < 0) {
+      currentIndex = chosenStints.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
+      if (currentIndex < 0) currentIndex = chosenStints.findIndex(item => new Date(item.scheduled_start).getTime() > now);
+    }
+    if (currentIndex >= 0) {
+      current = chosenStints[currentIndex];
+      next = chosenStints[currentIndex + 1] || null;
+    }
+  }
+  renderLiveRiderCard("current", current, "No rider currently scheduled", "Waiting for a published stint");
   renderLiveRiderCard("next", next, "No upcoming rider", "No future published stint found");
+  const button = document.querySelector("#rider-changeover-button");
+  if (button) button.disabled = !canManageOperations() || !current || !next;
+  const status = document.querySelector("#changeover-status");
+  if (status && liveRaceStateByEvent[chosenEventId]?.changed_at) {
+    status.textContent = "Last changeover · " + liveTime(liveRaceStateByEvent[chosenEventId].changed_at);
+  } else if (status && !status.dataset.message) {
+    status.textContent = "Changeovers sync to all connected devices.";
+  }
+}
+async function performRiderChangeover() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const button = document.querySelector("#rider-changeover-button");
+  const status = document.querySelector("#changeover-status");
+  button.disabled = true;
+  button.textContent = "Updating…";
+  const { data, error } = await supabaseClient.rpc("advance_live_changeover", { p_event_id: liveSelectedEventId });
+  button.textContent = "RIDER CHANGEOVER";
+  if (error) {
+    status.textContent = error.message || "Changeover could not be saved.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
+  renderLiveRaceDisplay();
+}
+function setupLiveRaceRealtime() {
+  if (liveRaceChannel) return;
+  liveRaceChannel = supabaseClient.channel("live-race-state-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "live_race_state" }, payload => {
+      if (payload.new?.event_id) liveRaceStateByEvent[payload.new.event_id] = payload.new;
+      if (payload.eventType === "DELETE" && payload.old?.event_id) delete liveRaceStateByEvent[payload.old.event_id];
+      renderLiveRaceDisplay();
+    }).subscribe();
 }
 setInterval(renderLiveRaceDisplay, 1000);
 
 async function loadRaceDay() {
   const list = document.querySelector("#race-record-list");
   list.textContent = "Loading race records…";
-  const [rosterResult, recordResult, ridersResult] = await Promise.all([
+  setupLiveRaceRealtime();
+  const [rosterResult, recordResult, ridersResult, liveStateResult] = await Promise.all([
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("race_stints").select("id,event_id,rider_id,actual_start,actual_end,laps_completed,best_lap_seconds,entry_notes,riders(first_name,last_name,preferred_name),race_events(event_name)").order("created_at",{ascending:false}).limit(100),
-    supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active")
+    supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,changed_at,changed_by")
   ]);
   if (rosterResult.error || recordResult.error || ridersResult.error) {
     list.textContent = "Race-day data could not be loaded. Check database access and refresh.";
     return;
   }
+  if (!liveStateResult.error) liveRaceStateByEvent = Object.fromEntries((liveStateResult.data || []).map(item => [item.event_id, item]));
   raceDayRosterStints = await Promise.all((rosterResult.data || []).map(async item => {
     const path = item.riders?.photo_path;
     if (!path) return item;
@@ -1764,6 +1831,7 @@ async function savePreferences(event) {
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
 }
 document.querySelector("#race-record-form").addEventListener("submit",saveRaceRecord);
+document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
 document.querySelector("#refresh-performance").addEventListener("click",loadPerformance);
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
