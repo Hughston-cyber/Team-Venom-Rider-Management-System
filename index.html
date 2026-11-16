@@ -30,6 +30,16 @@
         <input id="login-password" name="password" type="password" autocomplete="current-password" required>
         <button class="auth-submit" id="login-submit" type="submit">Sign in <span>→</span></button>
       </form>
+      <form id="invite-password-form" hidden>
+        <p class="eyebrow">INVITATION ACCEPTED</p>
+        <h2>Create your password</h2>
+        <p class="auth-copy">Choose a personal password for your Team Venom account. Do not share it with anyone.</p>
+        <label for="invite-password">New password</label>
+        <input id="invite-password" name="password" type="password" minlength="8" autocomplete="new-password" required>
+        <label for="invite-confirm-password">Confirm password</label>
+        <input id="invite-confirm-password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" required>
+        <button class="auth-submit" id="finish-invite-setup" type="submit">Create password and continue <span>→</span></button>
+      </form>
       <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       <p class="auth-foot">Private workspace · Access is managed by Team Venom administrators</p>
     </div>
@@ -49,6 +59,7 @@
         <button class="nav-link" data-view="race-day"><span>◷</span> Race day</button>
         <button class="nav-link" data-view="performance"><span>↗</span> Performance</button>
         <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
+        <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><span>♙</span> Account management</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="system-status"><span class="status-dot"></span><span><strong>System workspace</strong><small>Beta release</small></span></div>
@@ -317,6 +328,23 @@
           </section>
           <section class="panel"><div class="panel-heading"><div><p class="eyebrow">YOUR INBOX</p><h2>Recent notifications</h2></div></div><p class="inline-message" id="notification-message" role="status"></p><div id="notification-list" class="record-list"><div class="empty-state">Loading notifications…</div></div></section>
           <p class="profile-note-help">Team updates appear in your in-app inbox. Push alerts are sent to registered devices when the account and device have push enabled.</p>
+        </div>
+        <div id="accounts-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">ADMINISTRATOR / ACCESS CONTROL</p><h1>Account management<span>.</span></h1><p class="subheading">Invite riders to create their own secure Team Venom login.</p></div></div>
+          <section class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">NEW MEMBER ACCESS</p><h2>Create a rider account</h2></div><span class="panel-tag">ADMIN ONLY</span></div>
+            <form id="create-rider-account-form" class="roster-form-grid">
+              <label>Rider profile<select id="account-rider-select" name="rider_id" required><option value="">Loading rider profiles…</option></select></label>
+              <label>Email address<input name="email" type="email" maxlength="254" autocomplete="off" placeholder="rider@example.com" required></label>
+              <div class="form-actions"><button class="primary-button" id="invite-rider-account" type="submit">Send invitation</button></div>
+            </form>
+            <p class="profile-note-help">The rider receives an email invitation, accepts it and creates their own password. New accounts receive the standard Member role. Passwords are never visible to administrators.</p>
+            <p class="inline-message" id="account-management-message" role="status"></p>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">ACCOUNT DIRECTORY</p><h2>Rider account links</h2></div><button class="text-button" type="button" id="refresh-rider-accounts">↻ Refresh</button></div>
+            <div id="rider-account-list" class="record-list"><div class="empty-state">Loading rider accounts…</div></div>
+          </section>
         </div>
         <div id="settings-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">ACCOUNT / PREFERENCES</p><h1>Settings<span>.</span></h1><p class="subheading">Review your account access and notification preferences.</p></div></div>
