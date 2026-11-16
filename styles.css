@@ -153,3 +153,14 @@
 .race-clock-actions button:disabled{opacity:.4;cursor:not-allowed}
 .race-clock-actions button[hidden]{display:none}
 @media(max-width:520px){.race-clock-actions{flex-direction:column}.race-clock-actions button{width:100%}}
+
+.race-clock-more-controls{position:relative;width:100%;display:flex;justify-content:center;margin-top:10px}
+.race-clock-more-controls summary{list-style:none;cursor:pointer;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:1px;padding:8px 12px;border:1px solid var(--line);border-radius:4px;transition:border-color .15s,color .15s}
+.race-clock-more-controls summary::-webkit-details-marker{display:none}
+.race-clock-more-controls summary::after{content:"⌄";margin-left:9px;font-size:12px}
+.race-clock-more-controls[open] summary::after{content:"⌃"}
+.race-clock-more-controls summary:hover{color:var(--text);border-color:var(--green)}
+.race-clock-more-menu{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding-top:9px}
+.race-clock-more-menu button{min-width:145px}
+.race-clock-more-controls[hidden]{display:none}
+@media(max-width:520px){.race-clock-more-menu{flex-direction:column}.race-clock-more-menu button{width:100%}}
