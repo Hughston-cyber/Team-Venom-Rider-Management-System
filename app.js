@@ -1639,22 +1639,37 @@ function renderLiveRaceDisplay() {
   if (countdown && raceClockStatus && raceClockLabel && startRaceClockButton) {
     const startedAt = raceClockState?.race_clock_started_at;
     const duration = Number(raceClockState?.race_clock_duration_seconds || 86400);
+    const pausedAt = raceClockState?.race_clock_paused_at;
+    const stopRaceClockButton = document.querySelector("#stop-race-clock-button");
+    const restartRaceClockButton = document.querySelector("#restart-race-clock-button");
+    const canControlClock = canManageOperations() && !!liveSelectedEventId;
     if (startedAt) {
-      const remaining = Math.max(0, duration - Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+      const endTime = pausedAt ? new Date(pausedAt).getTime() : Date.now();
+      const remaining = Math.max(0, duration - Math.floor((endTime - new Date(startedAt).getTime()) / 1000));
       const hours = Math.floor(remaining / 3600);
       const minutes = Math.floor((remaining % 3600) / 60);
       const seconds = remaining % 60;
       countdown.textContent = [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
-      raceClockLabel.textContent = remaining === 0 ? "FINISHED" : "LIVE";
-      raceClockStatus.textContent = remaining === 0 ? "The 24-hour race period has finished." : "Race started · " + liveTime(startedAt);
-      startRaceClockButton.textContent = remaining === 0 ? "RACE COMPLETE" : "RACE CLOCK RUNNING";
-      startRaceClockButton.disabled = true;
+      raceClockLabel.textContent = remaining === 0 ? "FINISHED" : pausedAt ? "PAUSED" : "LIVE";
+      raceClockStatus.textContent = remaining === 0 ? "The 24-hour race period has finished." : pausedAt ? "Clock paused · " + liveTime(pausedAt) : "Race started · " + liveTime(startedAt);
+      startRaceClockButton.textContent = remaining === 0 ? "RACE COMPLETE" : pausedAt ? "RESUME CLOCK" : "CLOCK RUNNING";
+      startRaceClockButton.disabled = !canControlClock || remaining === 0 || !pausedAt;
+      if (stopRaceClockButton) {
+        stopRaceClockButton.hidden = !!pausedAt || remaining === 0;
+        stopRaceClockButton.disabled = !canControlClock || !!pausedAt || remaining === 0;
+      }
+      if (restartRaceClockButton) {
+        restartRaceClockButton.hidden = false;
+        restartRaceClockButton.disabled = !canControlClock;
+      }
     } else {
       countdown.textContent = "24:00:00";
       raceClockLabel.textContent = "READY";
       raceClockStatus.textContent = "The race clock is ready to start.";
       startRaceClockButton.textContent = "START RACE CLOCK";
-      startRaceClockButton.disabled = !canManageOperations() || !liveSelectedEventId || !raceDayRosterStints.some(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published");
+      startRaceClockButton.disabled = !canControlClock || !raceDayRosterStints.some(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published");
+      if (stopRaceClockButton) { stopRaceClockButton.hidden = true; stopRaceClockButton.disabled = true; }
+      if (restartRaceClockButton) { restartRaceClockButton.hidden = true; restartRaceClockButton.disabled = true; }
     }
   }
   let current = null, next = null;
@@ -1690,7 +1705,7 @@ async function startRaceClock() {
   if (!canManageOperations() || !liveSelectedEventId) return;
   const button = document.querySelector("#start-race-clock-button");
   const status = document.querySelector("#race-clock-status");
-  if (liveRaceStateByEvent[liveSelectedEventId]?.race_clock_started_at) return;
+  if (liveRaceStateByEvent[liveSelectedEventId]?.race_clock_started_at && !liveRaceStateByEvent[liveSelectedEventId]?.race_clock_paused_at) return;
   button.disabled = true;
   button.textContent = "STARTING…";
   const { data, error } = await supabaseClient.rpc("start_live_race_clock", { p_event_id: liveSelectedEventId });
@@ -1703,6 +1718,46 @@ async function startRaceClock() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "The 24-hour race clock has started.";
+  renderLiveRaceDisplay();
+}
+async function stopRaceClock() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const button = document.querySelector("#stop-race-clock-button");
+  const status = document.querySelector("#race-clock-status");
+  button.disabled = true;
+  button.textContent = "STOPPING…";
+  const { data, error } = await supabaseClient.rpc("stop_live_race_clock", { p_event_id: liveSelectedEventId });
+  button.textContent = "STOP CLOCK";
+  if (error) {
+    status.textContent = error.message || "The race clock could not be stopped.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "Race clock paused.";
+  renderLiveRaceDisplay();
+}
+async function restartRaceClock() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const confirmed = window.confirm("Reset the race clock to 24:00:00? The clock will be stopped and will need to be started again.");
+  if (!confirmed) return;
+  const button = document.querySelector("#restart-race-clock-button");
+  const status = document.querySelector("#race-clock-status");
+  button.disabled = true;
+  button.textContent = "RESETTING…";
+  const { data, error } = await supabaseClient.rpc("restart_live_race_clock", { p_event_id: liveSelectedEventId });
+  button.textContent = "↻ RESTART CLOCK";
+  if (error) {
+    status.textContent = error.message || "The race clock could not be restarted.";
+    status.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (data) liveRaceStateByEvent[data.event_id] = data;
+  status.classList.remove("error-state");
+  status.textContent = "Race clock reset to 24 hours. Ready to start.";
   renderLiveRaceDisplay();
 }
 async function performRiderChangeover() {
@@ -1780,7 +1835,7 @@ async function loadRaceDay() {
   const [rosterResult, ridersResult, liveStateResult] = await Promise.all([
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
-    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds")
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds,race_clock_paused_at")
   ]);
   if (rosterResult.error || ridersResult.error) {
     const status = document.querySelector("#race-clock-status");
@@ -1872,6 +1927,8 @@ async function savePreferences(event) {
 }
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
 document.querySelector("#start-race-clock-button").addEventListener("click",startRaceClock);
+document.querySelector("#stop-race-clock-button").addEventListener("click",stopRaceClock);
+document.querySelector("#restart-race-clock-button").addEventListener("click",restartRaceClock);
 document.querySelector("#undo-rider-changeover-button").addEventListener("click",undoRiderChangeover);
 document.querySelector("#restart-live-roster-button").addEventListener("click",restartLiveRoster);
 document.querySelector("#refresh-race-day").addEventListener("click",loadRaceDay);
