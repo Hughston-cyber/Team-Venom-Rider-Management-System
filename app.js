@@ -765,6 +765,89 @@ async function deleteRaceEvent(eventRecord, button) {
   await loadRosters();
 }
 
+async function createDraftFromRoster(sourceRoster, button) {
+  if (!rosterCanManage()) return;
+  const eventRecord = rosterEvents.find(item => item.id === sourceRoster.event_id);
+  if (!eventRecord) {
+    setRosterMessage("#manual-roster-message", "The race event for this roster could not be found.", true);
+    return;
+  }
+
+  const nextVersion = Math.max(
+    0,
+    ...rosterRecords.filter(item => item.event_id === sourceRoster.event_id).map(item => Number(item.version_number) || 0)
+  ) + 1;
+
+  button.disabled = true;
+  button.textContent = "Preparing…";
+  const { data: sourceStints, error: sourceError } = await supabaseClient
+    .from("roster_stints")
+    .select("rider_id,stint_number,scheduled_start,scheduled_end,roster_notes")
+    .eq("roster_id", sourceRoster.id)
+    .order("stint_number", { ascending: true });
+
+  if (sourceError) {
+    button.disabled = false;
+    button.textContent = "Create draft";
+    setRosterMessage("#manual-roster-message", "The source roster could not be read. No new version was created.", true);
+    return;
+  }
+
+  const count = sourceStints?.length || 0;
+  if (!confirm(`Create draft Version ${nextVersion} for ${eventRecord.event_name} by copying Version ${sourceRoster.version_number}? This creates a separate draft with ${count} stint(s). Version ${sourceRoster.version_number} will remain unchanged.`)) {
+    button.disabled = false;
+    button.textContent = "Create draft";
+    return;
+  }
+
+  const { data: authData } = await supabaseClient.auth.getUser();
+  const { data: newRoster, error: createError } = await supabaseClient
+    .from("rosters")
+    .insert({
+      event_id: sourceRoster.event_id,
+      version_number: nextVersion,
+      status: "draft",
+      source_filename: `Draft copied from Version ${sourceRoster.version_number}`,
+      uploaded_by: authData.user?.id
+    })
+    .select("id")
+    .single();
+
+  if (createError || !newRoster) {
+    button.disabled = false;
+    button.textContent = "Create draft";
+    setRosterMessage("#manual-roster-message", "The new draft could not be created. Refresh the roster list and try again.", true);
+    return;
+  }
+
+  if (count) {
+    const copiedStints = sourceStints.map(stint => ({ ...stint, roster_id: newRoster.id }));
+    const { error: copyError } = await supabaseClient.from("roster_stints").insert(copiedStints);
+    if (copyError) {
+      const { error: cleanupError } = await supabaseClient.from("rosters").delete().eq("id", newRoster.id).eq("status", "draft");
+      button.disabled = false;
+      button.textContent = "Create draft";
+      setRosterMessage(
+        "#manual-roster-message",
+        cleanupError
+          ? "The draft was created but its stints could not be copied, and automatic cleanup failed. Refresh and ask an administrator to inspect the empty draft."
+          : "The stints could not be copied. The incomplete draft was removed and the source version was left unchanged.",
+        true
+      );
+      await loadRosters();
+      return;
+    }
+  }
+
+  button.disabled = false;
+  button.textContent = "Create draft";
+  await loadRosters();
+  document.querySelector("#manual-roster-select").value = newRoster.id;
+  await loadManualStints();
+  document.querySelector("#manual-stint-form").scrollIntoView({ behavior: "smooth", block: "center" });
+  setRosterMessage("#manual-roster-message", `Draft Version ${nextVersion} created from Version ${sourceRoster.version_number}. Edit and preview it before publishing.`);
+}
+
 function renderRosterRecords() {
   const list = document.querySelector("#roster-list");
   const empty = document.querySelector("#roster-empty");
@@ -818,6 +901,15 @@ function renderRosterRecords() {
       row.append(info);
       const actions = document.createElement("div");
       actions.className = "roster-version-actions";
+      if (rosterCanManage()) {
+        const createDraft = document.createElement("button");
+        createDraft.type = "button";
+        createDraft.className = "text-button";
+        createDraft.textContent = "Create draft";
+        createDraft.title = `Create a new draft by copying Version ${roster.version_number}`;
+        createDraft.addEventListener("click", () => createDraftFromRoster(roster, createDraft));
+        actions.append(createDraft);
+      }
       const preview = document.createElement("button");
       preview.type = "button";
       preview.className = "text-button";
