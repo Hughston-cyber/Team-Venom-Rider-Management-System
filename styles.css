@@ -164,3 +164,9 @@
 .race-clock-more-menu button{min-width:145px}
 .race-clock-more-controls[hidden]{display:none}
 @media(max-width:520px){.race-clock-more-menu{flex-direction:column}.race-clock-more-menu button{width:100%}}
+
+
+/* Device-level web push controls */
+.push-device-control{display:grid;gap:8px;margin-top:15px;padding-top:14px;border-top:1px solid var(--line)}
+.push-device-control .text-button{justify-self:start}
+.push-device-control .inline-message{margin:0;line-height:1.5}
