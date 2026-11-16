@@ -172,3 +172,14 @@
 .push-device-control .inline-message{margin:0;line-height:1.5}
 
 .push-device-control #test-push-device:disabled{opacity:.4;cursor:not-allowed}
+
+
+/* Administrator rider account management */
+#create-rider-account-form{align-items:end}
+#rider-account-list .record-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px;align-items:center}
+#rider-account-list .record-row strong{grid-column:1}
+#rider-account-list .record-row small{grid-column:1;color:var(--muted)}
+#rider-account-list .record-row .status-badge{grid-column:2;grid-row:1 / span 2;white-space:nowrap}
+#invite-password-form h2{font-size:24px;margin:0 0 8px}
+#invite-password-form .auth-copy{margin-bottom:18px}
+@media(max-width:600px){#rider-account-list .record-row{grid-template-columns:1fr}#rider-account-list .record-row .status-badge{grid-column:1;grid-row:auto;justify-self:start}}
