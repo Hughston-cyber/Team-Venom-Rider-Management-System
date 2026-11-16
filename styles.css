@@ -73,3 +73,13 @@
 .roster-version-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.roster-delete-button{border-color:#704137;color:#ffb6a9}.roster-delete-button:hover{border-color:#ff8d78;color:#ffd0c7}
 
 .rider-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}.rider-delete-button{color:#ffb6a9}.rider-delete-button:hover{color:#ffd0c7;border-color:#ff8d78}@media(max-width:640px){.rider-row-actions{width:100%;justify-content:flex-end}}
+
+
+.roster-event-actions{display:flex;justify-content:flex-end;margin:8px 0 2px}
+.roster-preview-details{margin:0 0 10px 12px;padding:13px 15px;background:#0b100d;border:1px solid #34452a;border-radius:5px;display:grid;gap:9px}
+.roster-preview-details[hidden]{display:none}
+.roster-preview-title{font-size:11px;color:var(--green);margin-bottom:2px}
+.roster-preview-stint{display:grid;gap:4px;padding:9px 0;border-top:1px solid var(--line)}
+.roster-preview-stint strong{font-size:11px}
+.roster-preview-stint small{font-size:10px;color:var(--muted);line-height:1.5}
+@media(max-width:550px){.roster-event-actions{justify-content:flex-start}.roster-preview-details{margin-left:0}}
