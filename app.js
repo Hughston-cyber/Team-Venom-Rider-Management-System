@@ -1610,6 +1610,27 @@ function renderLiveRaceDisplay() {
   const clock = document.querySelector("#live-current-time");
   if (!clock) return;
   clock.textContent = new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const now = Date.now();
+  const published = raceDayRosterStints
+    .filter(item => item.rosters?.status === "published" && item.scheduled_start && item.scheduled_end)
+    .sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
+  const groups = new Map();
+  published.forEach(item => {
+    const eventId = item.rosters?.event_id;
+    if (!eventId) return;
+    if (!groups.has(eventId)) groups.set(eventId, []);
+    groups.get(eventId).push(item);
+  });
+  let chosenEventId = null;
+  let chosenStints = [];
+  for (const [eventId, stints] of groups) {
+    const storedId = liveRaceStateByEvent[eventId]?.current_roster_stint_id;
+    const storedIndex = storedId ? stints.findIndex(item => item.id === storedId) : -1;
+    const activeIndex = stints.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
+    const candidateIndex = storedIndex >= 0 ? storedIndex : activeIndex >= 0 ? activeIndex : stints.findIndex(item => new Date(item.scheduled_start).getTime() > now);
+    if (candidateIndex >= 0) { chosenEventId = eventId; chosenStints = stints; break; }
+  }
+  liveSelectedEventId = chosenEventId;
   const raceClockState = liveRaceStateByEvent[liveSelectedEventId];
   const countdown = document.querySelector("#race-countdown");
   const raceClockStatus = document.querySelector("#race-clock-status");
@@ -1636,27 +1657,6 @@ function renderLiveRaceDisplay() {
       startRaceClockButton.disabled = !canManageOperations() || !liveSelectedEventId || !raceDayRosterStints.some(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published");
     }
   }
-  const now = Date.now();
-  const published = raceDayRosterStints
-    .filter(item => item.rosters?.status === "published" && item.scheduled_start && item.scheduled_end)
-    .sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
-  const groups = new Map();
-  published.forEach(item => {
-    const eventId = item.rosters?.event_id;
-    if (!eventId) return;
-    if (!groups.has(eventId)) groups.set(eventId, []);
-    groups.get(eventId).push(item);
-  });
-  let chosenEventId = null;
-  let chosenStints = [];
-  for (const [eventId, stints] of groups) {
-    const storedId = liveRaceStateByEvent[eventId]?.current_roster_stint_id;
-    const storedIndex = storedId ? stints.findIndex(item => item.id === storedId) : -1;
-    const activeIndex = stints.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
-    const candidateIndex = storedIndex >= 0 ? storedIndex : activeIndex >= 0 ? activeIndex : stints.findIndex(item => new Date(item.scheduled_start).getTime() > now);
-    if (candidateIndex >= 0) { chosenEventId = eventId; chosenStints = stints; break; }
-  }
-  liveSelectedEventId = chosenEventId;
   let current = null, next = null;
   if (chosenStints.length) {
     const storedId = liveRaceStateByEvent[chosenEventId]?.current_roster_stint_id;
@@ -1783,7 +1783,8 @@ async function loadRaceDay() {
     supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds")
   ]);
   if (rosterResult.error || ridersResult.error) {
-    document.querySelector("#race-countdown-status")?.textContent = "Race-day data could not be loaded. Check database access and refresh.";
+    const status = document.querySelector("#race-clock-status");
+    if (status) { status.textContent = "Race-day data could not be loaded. Check database access and refresh."; status.classList.add("error-state"); }
     return;
   }
   if (!liveStateResult.error) liveRaceStateByEvent = Object.fromEntries((liveStateResult.data || []).map(item => [item.event_id, item]));
