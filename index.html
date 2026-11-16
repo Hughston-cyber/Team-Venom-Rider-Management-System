@@ -332,6 +332,16 @@
         <div id="accounts-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">ADMINISTRATOR / ACCESS CONTROL</p><h1>Account management<span>.</span></h1><p class="subheading">Invite riders to create their own secure Team Venom login.</p></div></div>
           <section class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">EMAIL DELIVERY / GOOGLE GMAIL</p><h2>Team Venom email connection</h2></div><span class="panel-tag">ADMIN ONLY</span></div>
+            <p class="profile-note-help">Connect the approved Team Venom sender Gmail account. The connection is stored server-side and only used to send account-link notifications.</p>
+            <div class="form-actions">
+              <button class="primary-button" id="connect-team-venom-gmail" type="button">Connect Gmail</button>
+              <button class="text-button" id="refresh-team-venom-gmail" type="button">Refresh status</button>
+              <button class="text-button" id="test-team-venom-gmail" type="button" disabled>Send test email to me</button>
+            </div>
+            <p class="inline-message" id="team-venom-gmail-status" role="status">Checking Gmail connection…</p>
+          </section>
+          <section class="panel roster-form-panel">
             <div class="panel-heading"><div><p class="eyebrow">NEW MEMBER ACCESS</p><h2>Create a rider account</h2></div><span class="panel-tag">ADMIN ONLY</span></div>
             <form id="create-rider-account-form" class="roster-form-grid">
               <label>Rider profile<select id="account-rider-select" name="rider_id" required><option value="">Loading rider profiles…</option></select></label>
