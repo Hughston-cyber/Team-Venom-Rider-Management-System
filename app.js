@@ -19,12 +19,17 @@ const pageCopy = {
   "race-day": ["Race-day control.", "Monitor live rider handovers and the 24-hour race clock."],
   performance: ["Performance centre.", "Review rider participation and team performance statistics."],
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
-  settings: ["System settings.", "Review account access and notification preferences."]
+  settings: ["System settings.", "Review account access and notification preferences."],
+  accounts: ["Account management.", "Invite riders and manage their Team Venom login access."]
 };
 
 let currentRoles = [];
 let ridersCache = [];
 let editingRiderId = null;
+
+function isAdministrator() {
+  return currentRoles.includes("administrator");
+}
 
 function showMessage(message, isError = true) {
   loginMessage.textContent = message;
@@ -32,6 +37,7 @@ function showMessage(message, isError = true) {
 }
 
 function selectView(view) {
+  if (view === "accounts" && !isAdministrator()) view = "overview";
   const copy = pageCopy[view] || pageCopy.overview;
   title.textContent = copy[0];
   const accent = document.createElement("span");
@@ -41,7 +47,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["overview","riders","rosters","roster-versions","race-day","performance","notifications","settings"];
+  const views = ["overview","riders","rosters","roster-versions","race-day","performance","notifications","accounts","settings"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -55,6 +61,7 @@ function selectView(view) {
   if (view === "race-day") loadRaceDay();
   if (view === "performance") loadPerformance();
   if (view === "notifications") loadNotifications();
+  if (view === "accounts") loadRiderAccounts();
   if (view === "settings") loadSettings();
 }
 document.querySelectorAll("[data-view]").forEach(button => {
@@ -497,9 +504,22 @@ async function showAuthenticatedWorkspace(session) {
   if (!session?.user) {
     appShell.hidden = true;
     authScreen.hidden = false;
+    loginForm.hidden = false;
+    document.querySelector("#invite-password-form").hidden = true;
     return;
   }
 
+  if (session.user.user_metadata?.must_set_password === true) {
+    appShell.hidden = true;
+    authScreen.hidden = false;
+    loginForm.hidden = true;
+    document.querySelector("#invite-password-form").hidden = false;
+    showMessage("Invitation accepted. Create your personal password to finish setting up your account.", false);
+    return;
+  }
+
+  loginForm.hidden = false;
+  document.querySelector("#invite-password-form").hidden = true;
   const userId = session.user.id;
   const [profileResult, roleResult] = await Promise.all([
     supabaseClient.from("member_profiles").select("display_name,status").eq("user_id", userId).maybeSingle(),
@@ -528,6 +548,7 @@ async function showAuthenticatedWorkspace(session) {
   document.querySelector("#account-name").textContent = profile.display_name || "Team member";
   document.querySelector("#account-role").textContent = currentRoles[0].toUpperCase();
   document.querySelector("#add-rider-toggle").hidden = !canManageRiders();
+  document.querySelector("#account-management-nav").hidden = !isAdministrator();
   document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
   document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
 document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
@@ -536,6 +557,31 @@ document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button")
   authScreen.hidden = true;
   selectView("race-day");
 }
+
+document.querySelector("#invite-password-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const password = form.elements.password.value;
+  const confirmation = form.elements.confirm_password.value;
+  const button = document.querySelector("#finish-invite-setup");
+  if (password.length < 8) { showMessage("Choose a password with at least 8 characters."); return; }
+  if (password !== confirmation) { showMessage("The passwords do not match."); return; }
+  button.disabled = true;
+  button.textContent = "Saving password…";
+  const { error } = await supabaseClient.auth.updateUser({
+    password,
+    data: { ...(currentUser?.user_metadata || {}), must_set_password: false }
+  });
+  if (error) {
+    showMessage("Your password could not be saved: " + error.message);
+  } else {
+    form.reset();
+    const { data } = await supabaseClient.auth.getSession();
+    await showAuthenticatedWorkspace(data.session);
+  }
+  button.disabled = false;
+  button.textContent = "Create password and continue";
+});
 
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -1897,6 +1943,66 @@ async function loadPerformance() {
     row.append(name,detail);board.append(row);
   });
 }
+
+async function loadRiderAccounts() {
+  const list = document.querySelector("#rider-account-list");
+  const select = document.querySelector("#account-rider-select");
+  if (!isAdministrator()) { list.textContent = "Administrator access is required."; return; }
+  list.textContent = "Loading rider accounts…";
+  const { data, error } = await supabaseClient.functions.invoke("rider-account-management", { body: { action: "list" } });
+  if (error || data?.error) {
+    list.textContent = "Rider accounts could not be loaded: " + (data?.error || error?.message || "Please try again.");
+    return;
+  }
+  const riders = data?.riders || [];
+  const available = riders.filter(rider => rider.status === "active" && !rider.account);
+  const selected = select.value;
+  select.replaceChildren(new Option("Choose an active rider…", ""));
+  available.forEach(rider => select.add(new Option(displayRiderName(rider), rider.id)));
+  if (available.some(item => item.id === selected)) select.value = selected;
+  list.replaceChildren();
+  if (!riders.length) {
+    list.textContent = "No rider profiles have been created yet. Add riders in the Rider directory first.";
+    return;
+  }
+  riders.forEach(rider => {
+    const row = document.createElement("article"); row.className = "record-row";
+    const heading = document.createElement("strong"); heading.textContent = displayRiderName(rider);
+    const detail = document.createElement("small");
+    detail.textContent = rider.account
+      ? rider.account.email + " · Account " + rider.account.status
+      : rider.status === "active" ? "No login account linked" : "Rider is not active · invitation unavailable";
+    const badge = document.createElement("span");
+    badge.className = "status-badge " + (rider.account ? (rider.account.status === "active" ? "status-active" : "status-inactive") : "status-inactive");
+    badge.textContent = rider.account ? "ACCOUNT LINKED" : "NOT LINKED";
+    row.append(heading, detail, badge); list.append(row);
+  });
+  document.querySelector("#account-management-message").textContent = available.length
+    ? available.length + " active rider profile(s) are ready for an invitation."
+    : "Every active rider already has an account, or no active profiles are available.";
+}
+async function inviteRiderAccount(event) {
+  event.preventDefault();
+  if (!isAdministrator()) return;
+  const form = event.currentTarget;
+  const button = document.querySelector("#invite-rider-account");
+  button.disabled = true; button.textContent = "Sending invitation…";
+  setModuleMessage("#account-management-message", "Creating the account and sending the invitation…");
+  const { data, error } = await supabaseClient.functions.invoke("rider-account-management", {
+    body: { action: "invite", rider_id: form.elements.rider_id.value, email: form.elements.email.value.trim() }
+  });
+  button.disabled = false; button.textContent = "Send invitation";
+  if (error || data?.error) {
+    setModuleMessage("#account-management-message", data?.error || error?.message || "The invitation could not be sent.", true);
+    return;
+  }
+  form.reset();
+  setModuleMessage("#account-management-message", "Invitation sent to " + data.email + " for " + data.rider + ". They must accept the email and create their own password.");
+  await loadRiderAccounts();
+}
+document.querySelector("#create-rider-account-form").addEventListener("submit", inviteRiderAccount);
+document.querySelector("#refresh-rider-accounts").addEventListener("click", loadRiderAccounts);
+
 async function loadNotifications() {
   const list=document.querySelector("#notification-list");list.textContent="Loading notifications…";
   const {data,error}=await supabaseClient.from("notifications").select("id,title,message,channel,status,created_at,read_at").order("created_at",{ascending:false}).limit(100);
