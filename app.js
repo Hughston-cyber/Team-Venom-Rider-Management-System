@@ -1954,8 +1954,10 @@ async function refreshPushDeviceControl() {
   const status = document.querySelector("#push-device-message");
   if (!button || !status) return;
   const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const testButton = document.querySelector("#test-push-device");
   if (!supported) {
     button.disabled = true;
+    if (testButton) testButton.disabled = true;
     button.textContent = "Push not supported in this browser";
     status.textContent = "Use a supported browser. On iPhone or iPad, add this website to your Home Screen first.";
     return;
@@ -1964,13 +1966,32 @@ async function refreshPushDeviceControl() {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     button.disabled = false;
+    if (testButton) testButton.disabled = !subscription;
     button.textContent = subscription ? "Disable push on this device" : "Enable push on this device";
     status.textContent = subscription
       ? "This device is registered for Team Venom push notifications."
       : "Push notifications have not been enabled on this device.";
   } catch (error) {
     button.disabled = true;
+    if (testButton) testButton.disabled = true;
     status.textContent = "Push settings could not be checked. Refresh and try again.";
+  }
+}
+async function sendPushTest() {
+  const button = document.querySelector("#test-push-device");
+  const status = document.querySelector("#push-device-message");
+  button.disabled = true;
+  button.textContent = "Sending test…";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("push-notifications", { body: { action: "test" } });
+    if (error || data?.error) throw error || new Error(data.error);
+    status.textContent = "Test notification sent to " + (data?.pushDevices || 0) + " registered device(s).";
+    setModuleMessage("#preferences-message", status.textContent);
+  } catch (error) {
+    status.textContent = error?.message || "The test notification could not be sent.";
+    setModuleMessage("#preferences-message", status.textContent, true);
+  } finally {
+    await refreshPushDeviceControl();
   }
 }
 async function togglePushDevice() {
@@ -2038,3 +2059,4 @@ document.querySelector("#refresh-notifications").addEventListener("click",loadNo
 document.querySelector("#announcement-form").addEventListener("submit",sendAnnouncement);
 document.querySelector("#notification-preferences-form").addEventListener("submit",savePreferences);
 document.querySelector("#toggle-push-device").addEventListener("click",togglePushDevice);
+document.querySelector("#test-push-device").addEventListener("click",sendPushTest);
