@@ -568,9 +568,10 @@ document.querySelector("#invite-password-form").addEventListener("submit", async
   if (password !== confirmation) { showMessage("The passwords do not match."); return; }
   button.disabled = true;
   button.textContent = "Saving password…";
+  const { data: activeSession } = await supabaseClient.auth.getSession();
   const { error } = await supabaseClient.auth.updateUser({
     password,
-    data: { ...(currentUser?.user_metadata || {}), must_set_password: false }
+    data: { ...(activeSession.session?.user?.user_metadata || {}), must_set_password: false }
   });
   if (error) {
     showMessage("Your password could not be saved: " + error.message);
