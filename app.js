@@ -1010,6 +1010,7 @@ function renderRosterRecords() {
             return;
           }
           setRosterMessage("#manual-roster-message", `Roster version ${roster.version_number} published successfully.`);
+          void sendOperationalPush("roster_published", { roster_id: roster.id });
           await loadRosters();
         });
         actions.append(edit, rename, remove, publish);
@@ -1548,6 +1549,19 @@ function canManageOperations() {
 function canManageNotifications() {
   return currentRoles.includes("administrator");
 }
+async function sendOperationalPush(type, details = {}) {
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("push-notifications", {
+      body: { action: "send", type, ...details }
+    });
+    if (error) console.warn("Team Venom notification delivery could not be started:", error.message);
+    else if (data?.error) console.warn("Team Venom notification delivery:", data.error);
+    return data || null;
+  } catch (error) {
+    console.warn("Team Venom notification delivery failed:", error);
+    return null;
+  }
+}
 function safeNumber(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 }
@@ -1721,6 +1735,7 @@ async function startRaceClock() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "The 24-hour race clock has started.";
+  void sendOperationalPush("race_clock_started", { event_id: liveSelectedEventId });
   renderLiveRaceDisplay();
 }
 async function stopRaceClock() {
@@ -1740,6 +1755,7 @@ async function stopRaceClock() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "Race clock paused.";
+  void sendOperationalPush("race_clock_stopped", { event_id: liveSelectedEventId });
   renderLiveRaceDisplay();
 }
 async function restartRaceClock() {
@@ -1780,6 +1796,7 @@ async function performRiderChangeover() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
+  void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
   renderLiveRaceDisplay();
 }
 async function undoRiderChangeover() {
@@ -1902,13 +1919,17 @@ async function sendAnnouncement(event) {
   event.preventDefault();if(!canManageNotifications())return;
   const form=event.currentTarget;const values=Object.fromEntries(new FormData(form).entries());
   const button=document.querySelector("#send-announcement");button.disabled=true;button.textContent="Sending…";
-  const {data:members,error:membersError}=await supabaseClient.from("member_profiles").select("user_id").eq("status","active");
-  if(membersError||!members?.length){button.disabled=false;button.textContent="Send announcement";setModuleMessage("#announcement-message","Active team members could not be loaded. No announcement was sent.",true);return;}
-  const payload=members.map(member=>({recipient_user_id:member.user_id,title:values.title.trim(),message:values.message.trim(),channel:"in_app",status:"sent",sent_at:new Date().toISOString()}));
-  const {error}=await supabaseClient.from("notifications").insert(payload);
+  const {data,error}=await supabaseClient.functions.invoke("push-notifications",{
+    body:{action:"send",type:values.type,title:String(values.title||"").trim(),message:String(values.message||"").trim()}
+  });
   button.disabled=false;button.textContent="Send announcement";
-  if(error){setModuleMessage("#announcement-message","Announcement could not be saved: "+error.message,true);return;}
-  form.reset();setModuleMessage("#announcement-message","Announcement delivered to "+members.length+" active member inbox(es).");await loadNotifications();await loadOverview();
+  if(error||data?.error){setModuleMessage("#announcement-message","Announcement could not be delivered: "+(data?.error||error?.message||"Please try again."),true);return;}
+  form.reset();
+  const pushCount=Number(data?.pushDevices||0), inboxCount=Number(data?.inboxRecipients||0);
+  setModuleMessage("#announcement-message",pushCount
+    ? `Announcement added to ${inboxCount} team inboxes and sent to ${pushCount} push-enabled device(s).`
+    : `Announcement added to ${inboxCount} team inboxes. No push-enabled devices are registered yet.`);
+  await loadNotifications();await loadOverview();
 }
 async function loadSettings() {
   if(!currentProfile||!currentUser)return;
@@ -1920,6 +1941,83 @@ async function loadSettings() {
   if(error){setModuleMessage("#preferences-message","Could not load preferences. Please refresh.",true);return;}
   const preferences=new Map((data||[]).map(item=>[item.channel,item.enabled]));
   ["in_app","email","push"].forEach(channel=>{const field=document.querySelector("#notification-preferences-form").elements[channel];field.checked=preferences.has(channel)?preferences.get(channel):channel==="in_app";});
+  await refreshPushDeviceControl();
+}
+function urlBase64ToUint8Array(value) {
+  const padding = "=".repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from(raw, character => character.charCodeAt(0));
+}
+async function refreshPushDeviceControl() {
+  const button = document.querySelector("#toggle-push-device");
+  const status = document.querySelector("#push-device-message");
+  if (!button || !status) return;
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if (!supported) {
+    button.disabled = true;
+    button.textContent = "Push not supported in this browser";
+    status.textContent = "Use a supported browser. On iPhone or iPad, add this website to your Home Screen first.";
+    return;
+  }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    button.disabled = false;
+    button.textContent = subscription ? "Disable push on this device" : "Enable push on this device";
+    status.textContent = subscription
+      ? "This device is registered for Team Venom push notifications."
+      : "Push notifications have not been enabled on this device.";
+  } catch (error) {
+    button.disabled = true;
+    status.textContent = "Push settings could not be checked. Refresh and try again.";
+  }
+}
+async function togglePushDevice() {
+  const button = document.querySelector("#toggle-push-device");
+  const status = document.querySelector("#push-device-message");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+  button.disabled = true;
+  button.textContent = "Updating…";
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) {
+      const { error } = await supabaseClient.functions.invoke("push-notifications", {
+        body: { action: "unsubscribe", endpoint: existing.endpoint }
+      });
+      if (error) throw error;
+      await existing.unsubscribe();
+      document.querySelector("#notification-preferences-form").elements.push.checked = false;
+      status.textContent = "Push notifications have been disabled on this device.";
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") throw new Error("Notification permission was not granted. Check your browser or device settings.");
+      const { data, error } = await supabaseClient.functions.invoke("push-notifications", { body: { action: "public-key" } });
+      if (error || !data?.publicKey) throw error || new Error("The push public key could not be loaded.");
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+      });
+      const { error: saveError } = await supabaseClient.functions.invoke("push-notifications", {
+        body: { action: "subscribe", subscription: subscription.toJSON() }
+      });
+      if (saveError) {
+        await subscription.unsubscribe();
+        throw saveError;
+      }
+      document.querySelector("#notification-preferences-form").elements.push.checked = true;
+      status.textContent = "Push notifications are enabled on this device.";
+    }
+    await refreshPushDeviceControl();
+    setModuleMessage("#preferences-message", status.textContent);
+  } catch (error) {
+    status.textContent = error?.message || "Push settings could not be updated.";
+    setModuleMessage("#preferences-message", status.textContent, true);
+    await refreshPushDeviceControl();
+  } finally {
+    button.disabled = false;
+  }
 }
 async function savePreferences(event) {
   event.preventDefault();const form=event.currentTarget;const button=document.querySelector("#save-preferences");button.disabled=true;button.textContent="Saving…";
@@ -1939,3 +2037,4 @@ document.querySelector("#refresh-performance").addEventListener("click",loadPerf
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
 document.querySelector("#announcement-form").addEventListener("submit",sendAnnouncement);
 document.querySelector("#notification-preferences-form").addEventListener("submit",savePreferences);
+document.querySelector("#toggle-push-device").addEventListener("click",togglePushDevice);
