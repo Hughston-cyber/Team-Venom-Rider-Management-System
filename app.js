@@ -1752,16 +1752,6 @@ async function loadRaceDay() {
     return { ...item, rider_photo_url: photoError ? null : signed?.signedUrl || null };
   }));
   renderLiveRaceDisplay();
-  const select = document.querySelector("#race-record-roster-stint");
-  const previous = select.value;
-  select.replaceChildren(new Option("Choose a scheduled stint…",""));
-  raceDayRosterStints.forEach(item => {
-    const rider = item.riders;
-    const event = item.rosters?.race_events;
-    const name = rider ? (rider.preferred_name || rider.first_name) + " " + rider.last_name : "Rider";
-    select.add(new Option((event?.event_name || "Event") + " · Stint " + item.stint_number + " · " + name,item.id));
-  });
-  if (raceDayRosterStints.some(item => item.id === previous)) select.value = previous;
   const records = recordResult.data || [];
   document.querySelector("#race-day-total").textContent = records.length.toLocaleString("en-AU");
   document.querySelector("#race-day-laps").textContent = records.reduce((sum,item)=>sum+safeNumber(item.laps_completed),0).toLocaleString("en-AU");
@@ -1780,27 +1770,6 @@ async function loadRaceDay() {
     if (item.entry_notes) { const note=document.createElement("small"); note.textContent=item.entry_notes; row.append(note); }
     list.append(row);
   });
-  document.querySelector("#race-record-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!canManageOperations();});
-}
-async function saveRaceRecord(event) {
-  event.preventDefault();
-  if (!canManageOperations()) return;
-  const form=event.currentTarget;
-  const values=Object.fromEntries(new FormData(form).entries());
-  const planned=raceDayRosterStints.find(item=>item.id===values.roster_stint_id);
-  if (!planned) { setModuleMessage("#race-record-message","Choose a scheduled roster stint.",true); return; }
-  const start=values.actual_start ? new Date(values.actual_start) : null;
-  const end=values.actual_end ? new Date(values.actual_end) : null;
-  if (start && Number.isNaN(start.getTime()) || end && Number.isNaN(end.getTime()) || start && end && end<=start) {
-    setModuleMessage("#race-record-message","Check the actual start and end times.",true); return;
-  }
-  const {data:auth}=await supabaseClient.auth.getUser();
-  const payload={event_id:planned.rosters.event_id,rider_id:planned.rider_id,roster_stint_id:planned.id,actual_start:start?start.toISOString():null,actual_end:end?end.toISOString():null,laps_completed:values.laps_completed===""?null:Number(values.laps_completed),best_lap_seconds:values.best_lap_seconds===""?null:Number(values.best_lap_seconds),entry_notes:values.entry_notes.trim()||null,entered_by:auth.user?.id};
-  const button=document.querySelector("#save-race-record"); button.disabled=true; button.textContent="Saving…";
-  const {error}=await supabaseClient.from("race_stints").insert(payload);
-  button.disabled=false; button.textContent="Save race record";
-  if(error){setModuleMessage("#race-record-message","Race record could not be saved: "+error.message,true);return;}
-  form.reset(); setModuleMessage("#race-record-message","Race record saved."); await loadRaceDay(); await loadPerformance(); await loadOverview();
 }
 async function loadPerformance() {
   const board=document.querySelector("#performance-leaderboard"); board.textContent="Loading performance data…";
@@ -1875,7 +1844,6 @@ async function savePreferences(event) {
   button.disabled=false;button.textContent="Save preferences";
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
 }
-document.querySelector("#race-record-form").addEventListener("submit",saveRaceRecord);
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
 document.querySelector("#undo-rider-changeover-button").addEventListener("click",undoRiderChangeover);
 document.querySelector("#restart-live-roster-button").addEventListener("click",restartLiveRoster);
