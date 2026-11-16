@@ -1,4 +1,4 @@
-const CACHE_NAME = "team-venom-shell-v1";
+const CACHE_NAME = "team-venom-shell-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -34,4 +34,33 @@ self.addEventListener("fetch", event => {
       return response;
     }))
   );
+});
+
+self.addEventListener("push", event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data?.text() || "" }; }
+  const title = payload.title || "Team Venom";
+  const options = {
+    body: payload.body || "You have a new Team Venom update.",
+    icon: payload.icon || "./favicon.svg",
+    badge: payload.badge || "./favicon.svg",
+    tag: payload.tag || "team-venom-update",
+    renotify: true,
+    data: payload.data || { url: "./" }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "./", self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+    for (const client of clientList) {
+      if ("focus" in client) {
+        if ("navigate" in client && client.url !== target) client.navigate(target);
+        return client.focus();
+      }
+    }
+    return self.clients.openWindow(target);
+  }));
 });
