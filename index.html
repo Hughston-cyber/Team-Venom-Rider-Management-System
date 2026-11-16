@@ -341,6 +341,16 @@
             <p class="profile-note-help">The rider receives an email invitation, accepts it and creates their own password. New accounts receive the standard Member role. Passwords are never visible to administrators.</p>
             <p class="inline-message" id="account-management-message" role="status"></p>
           </section>
+          <section class="panel roster-form-panel">
+            <div class="panel-heading"><div><p class="eyebrow">EXISTING MEMBER ACCESS</p><h2>Link an existing account</h2></div><span class="panel-tag">NO PASSWORD CHANGES</span></div>
+            <form id="link-existing-account-form" class="roster-form-grid">
+              <label>Rider profile<select id="account-link-rider-select" name="rider_id" required><option value="">Loading rider profiles…</option></select></label>
+              <label>Existing account email<input name="email" type="email" maxlength="254" autocomplete="off" placeholder="existing-member@example.com" required></label>
+              <div class="form-actions"><button class="primary-button" id="link-existing-account" type="submit">Link existing account</button></div>
+            </form>
+            <p class="profile-note-help">Use the exact email address the member uses to sign in. This links their current login to the selected rider profile. Their password, email and assigned roles are left unchanged.</p>
+            <p class="inline-message" id="link-account-message" role="status"></p>
+          </section>
           <section class="panel">
             <div class="panel-heading"><div><p class="eyebrow">ACCOUNT DIRECTORY</p><h2>Rider account links</h2></div><button class="text-button" type="button" id="refresh-rider-accounts">↻ Refresh</button></div>
             <div id="rider-account-list" class="record-list"><div class="empty-state">Loading rider accounts…</div></div>
