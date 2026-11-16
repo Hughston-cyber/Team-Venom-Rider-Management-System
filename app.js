@@ -630,7 +630,7 @@ async function previewRosterVersion(roster, previewNode) {
   previewNode.textContent = "Loading roster preview…";
   const { data, error } = await supabaseClient
     .from("roster_stints")
-    .select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name)")
+    .select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(id,first_name,last_name,preferred_name,photo_path)")
     .eq("roster_id", roster.id)
     .order("stint_number", { ascending: true });
   if (error) {
@@ -649,18 +649,50 @@ async function previewRosterVersion(roster, previewNode) {
     previewNode.append(empty);
     return;
   }
+  const photoUrls = new Map();
+  await Promise.all([...new Set((data || []).map(stint => stint.riders).filter(rider => rider?.id && rider.photo_path).map(rider => rider.id))].map(async riderId => {
+    const rider = data.find(stint => stint.riders?.id === riderId)?.riders;
+    const { data: signed, error: photoError } = await supabaseClient.storage.from("rider-photos").createSignedUrl(rider.photo_path, 3600);
+    if (!photoError && signed?.signedUrl) photoUrls.set(riderId, signed.signedUrl);
+  }));
   data.forEach(stint => {
     const item = document.createElement("div");
     item.className = "roster-preview-stint";
     const rider = stint.riders;
-    const name = rider ? displayRiderName(rider) : "Unknown rider";
+    const identity = document.createElement("div");
+    identity.className = "roster-preview-identity";
+    const avatar = document.createElement("div");
+    avatar.className = "roster-preview-avatar";
+    const photoUrl = rider?.id ? photoUrls.get(rider.id) : null;
+    if (photoUrl) {
+      const image = document.createElement("img");
+      image.src = photoUrl;
+      image.alt = `${displayRiderName(rider)} profile photograph`;
+      image.loading = "lazy";
+      avatar.append(image);
+    } else {
+      avatar.textContent = rider ? `${rider.first_name?.[0] || ""}${rider.last_name?.[0] || ""}`.toUpperCase() : "?";
+      avatar.setAttribute("aria-label", "No profile photograph available");
+    }
+    const nameBlock = document.createElement("div");
+    nameBlock.className = "roster-preview-name";
     const heading = document.createElement("strong");
-    heading.textContent = `Stint ${stint.stint_number} · ${name}`;
+    heading.textContent = rider ? displayRiderName(rider) : "Unknown rider";
+    const registeredName = document.createElement("small");
+    registeredName.textContent = rider ? [rider.first_name, rider.last_name].filter(Boolean).join(" ") : "Rider profile unavailable";
+    nameBlock.append(heading, registeredName);
+    identity.append(avatar, nameBlock);
+    const details = document.createElement("div");
+    details.className = "roster-preview-time";
+    const stintLabel = document.createElement("strong");
+    stintLabel.textContent = `Stint ${stint.stint_number}`;
     const times = document.createElement("small");
     times.textContent = `${new Date(stint.scheduled_start).toLocaleString("en-AU")} – ${new Date(stint.scheduled_end).toLocaleString("en-AU")}`;
-    item.append(heading, times);
+    details.append(stintLabel, times);
+    item.append(identity, details);
     if (stint.roster_notes) {
       const note = document.createElement("small");
+      note.className = "roster-preview-note";
       note.textContent = stint.roster_notes;
       item.append(note);
     }
