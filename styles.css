@@ -144,3 +144,12 @@
 .race-clock-start-button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:850px){.race-clock-layout{grid-template-columns:1fr}.race-countdown-panel{min-height:190px}}
 @media(max-width:520px){.race-countdown-panel{padding:18px 14px}.race-countdown{font-size:clamp(42px,13vw,62px);letter-spacing:-2px}.race-clock-heading{gap:8px}}
+
+.race-clock-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;width:100%}
+.race-clock-actions button{min-width:145px;margin:0}
+.race-clock-stop-button{border-color:rgba(229,139,131,.55);color:#e58b83}
+.race-clock-stop-button:hover{border-color:#e58b83;color:#ffaaa1}
+.race-clock-reset-button{border-color:#53634a;color:var(--text)}
+.race-clock-actions button:disabled{opacity:.4;cursor:not-allowed}
+.race-clock-actions button[hidden]{display:none}
+@media(max-width:520px){.race-clock-actions{flex-direction:column}.race-clock-actions button{width:100%}}
