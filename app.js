@@ -1564,11 +1564,68 @@ async function loadOverview() {
   document.querySelector("#overview-alerts").textContent = alerts.error ? "—" : (alerts.count ?? 0).toLocaleString("en-AU");
   document.querySelector("#overview-updated").textContent = "Updated " + new Date().toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"});
 }
+function liveRiderName(stint) {
+  const rider = stint?.riders;
+  if (!rider) return "Rider details unavailable";
+  return rider.preferred_name ? rider.preferred_name + " " + rider.last_name : rider.first_name + " " + rider.last_name;
+}
+function liveTime(value) {
+  return value ? new Date(value).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
+}
+function renderLiveRiderCard(prefix, stint, emptyTitle, emptyDetail) {
+  const photo = document.querySelector("#" + prefix + "-photo");
+  const name = document.querySelector("#" + prefix + "-name");
+  const detail = document.querySelector("#" + prefix + "-detail");
+  const time = document.querySelector("#" + prefix + "-time");
+  photo.replaceChildren();
+  if (!stint) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "live-rider-placeholder";
+    placeholder.textContent = "—";
+    photo.append(placeholder);
+    name.textContent = emptyTitle;
+    detail.textContent = emptyDetail;
+    time.textContent = "";
+    return;
+  }
+  if (stint.rider_photo_url) {
+    const image = document.createElement("img");
+    image.src = stint.rider_photo_url;
+    image.alt = liveRiderName(stint) + " profile photograph";
+    photo.append(image);
+  } else {
+    const placeholder = document.createElement("span");
+    placeholder.className = "live-rider-placeholder";
+    placeholder.textContent = (stint.riders?.first_name?.[0] || "") + (stint.riders?.last_name?.[0] || "");
+    photo.append(placeholder);
+  }
+  name.textContent = liveRiderName(stint);
+  detail.textContent = stint.rosters?.race_events?.event_name || "Team Venom";
+  time.textContent = prefix === "next" ? "TIME IN · " + liveTime(stint.scheduled_start) : "ENDS · " + liveTime(stint.scheduled_end);
+}
+function renderLiveRaceDisplay() {
+  const clock = document.querySelector("#live-current-time");
+  if (!clock) return;
+  clock.textContent = new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const now = Date.now();
+  const published = raceDayRosterStints
+    .filter(item => item.rosters?.status === "published" && item.scheduled_start && item.scheduled_end)
+    .sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
+  const activeIndex = published.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
+  const active = activeIndex >= 0 ? published[activeIndex] : null;
+  const next = activeIndex >= 0
+    ? published.slice(activeIndex + 1).find(item => new Date(item.scheduled_start).getTime() > now) || null
+    : published.find(item => new Date(item.scheduled_start).getTime() > now) || null;
+  renderLiveRiderCard("current", active, "No rider currently scheduled", "Waiting for the next published stint");
+  renderLiveRiderCard("next", next, "No upcoming rider", "No future published stint found");
+}
+setInterval(renderLiveRaceDisplay, 1000);
+
 async function loadRaceDay() {
   const list = document.querySelector("#race-record-list");
   list.textContent = "Loading race records…";
   const [rosterResult, recordResult, ridersResult] = await Promise.all([
-    supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
+    supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("race_stints").select("id,event_id,rider_id,actual_start,actual_end,laps_completed,best_lap_seconds,entry_notes,riders(first_name,last_name,preferred_name),race_events(event_name)").order("created_at",{ascending:false}).limit(100),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active")
   ]);
@@ -1576,7 +1633,13 @@ async function loadRaceDay() {
     list.textContent = "Race-day data could not be loaded. Check database access and refresh.";
     return;
   }
-  raceDayRosterStints = rosterResult.data || [];
+  raceDayRosterStints = await Promise.all((rosterResult.data || []).map(async item => {
+    const path = item.riders?.photo_path;
+    if (!path) return item;
+    const { data: signed, error: photoError } = await supabaseClient.storage.from("rider-photos").createSignedUrl(path, 3600);
+    return { ...item, rider_photo_url: photoError ? null : signed?.signedUrl || null };
+  }));
+  renderLiveRaceDisplay();
   const select = document.querySelector("#race-record-roster-stint");
   const previous = select.value;
   select.replaceChildren(new Option("Choose a scheduled stint…",""));
