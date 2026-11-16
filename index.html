@@ -238,7 +238,7 @@
         </div>
 
         <div id="race-day-content" hidden>
-          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Record actual rider stints and monitor event activity.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Monitor live rider handovers and event activity.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
           <section class="live-race-display" aria-label="Live rider handover display">
             <article class="live-rider-panel">
               <p class="eyebrow">CURRENTLY RIDING</p>
@@ -252,9 +252,6 @@
               <time id="live-current-time" class="live-current-time">--:--:--</time>
               <p class="live-clock-caption">LOCAL EVENT TIME</p>
               <button class="primary-button live-changeover-button" id="rider-changeover-button" type="button" disabled>RIDER CHANGEOVER</button>
-              <button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button>
-              <button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button>
-              <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
             </article>
             <article class="live-rider-panel next-rider-panel">
               <p class="eyebrow">NEXT RIDING</p>
@@ -267,23 +264,8 @@
           <div class="roster-stats-grid">
             <article class="stat-card"><div class="stat-label">RECORDED STINTS</div><div class="stat-value" id="race-day-total">—</div><div class="stat-foot">Actual race records</div></article>
             <article class="stat-card"><div class="stat-label">LAPS RECORDED</div><div class="stat-value" id="race-day-laps">—</div><div class="stat-foot">Across all recorded stints</div></article>
-            <article class="stat-card"><div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div></article>
+            <article class="stat-card live-admin-card"><div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div><div class="live-admin-controls"><button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button><button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button></div><p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p></article>
           </div>
-          <section class="panel roster-form-panel">
-            <div class="panel-heading"><div><p class="eyebrow">RACE RECORD / ENTRY</p><h2>Record an actual stint</h2></div><span class="panel-tag">ADMIN / MANAGER</span></div>
-            <form id="race-record-form">
-              <div class="roster-form-grid">
-                <label>Scheduled roster stint<select id="race-record-roster-stint" name="roster_stint_id" required><option value="">Choose a published or draft stint…</option></select></label>
-                <label>Actual start<input name="actual_start" type="datetime-local"></label>
-                <label>Actual end<input name="actual_end" type="datetime-local"></label>
-                <label>Laps completed<input name="laps_completed" type="number" min="0" step="1"></label>
-                <label>Best lap (seconds)<input name="best_lap_seconds" type="number" min="0" step="0.1"></label>
-                <label>Entry notes<input name="entry_notes" maxlength="1000" placeholder="Optional race notes"></label>
-              </div>
-              <div class="roster-actions"><span class="muted">Actual records are stored separately from the planned roster.</span><button class="primary-button" id="save-race-record" type="submit">Save race record</button></div>
-            </form>
-            <p class="inline-message" id="race-record-message" role="status"></p>
-          </section>
           <div class="roster-summary-row"><div><p class="eyebrow">RECENT ACTIVITY</p><h2>Recorded race stints</h2></div></div>
           <div class="panel roster-table-panel"><div id="race-record-list" class="record-list"><div class="empty-state">Loading race records…</div></div></div>
         </div>
