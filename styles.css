@@ -117,3 +117,6 @@
 .live-changeover-button:disabled{opacity:.42;cursor:not-allowed}
 .changeover-status{font-size:10px;text-align:center;margin:10px 0 0;min-height:14px;color:var(--muted)}
 .changeover-status.error-state{color:#e58b83}
+
+.live-undo-button{margin-top:9px;min-width:190px;font-weight:800;letter-spacing:.45px}
+.live-undo-button:disabled{opacity:.35;cursor:not-allowed}
