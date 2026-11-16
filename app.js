@@ -2028,11 +2028,38 @@ async function loadRiderAccounts() {
     const badge = document.createElement("span");
     badge.className = "status-badge " + (rider.account ? (rider.account.status === "active" ? "status-active" : "status-inactive") : "status-inactive");
     badge.textContent = rider.account ? "ACCOUNT LINKED" : "NOT LINKED";
-    row.append(heading, detail, badge); list.append(row);
+    row.append(heading, detail, badge);
+    if (rider.account?.invitation_pending === true) {
+      const resendButton = document.createElement("button");
+      resendButton.type = "button";
+      resendButton.className = "text-button";
+      resendButton.textContent = "Resend invitation";
+      resendButton.addEventListener("click", () => resendRiderInvitation(rider.id, resendButton));
+      row.append(resendButton);
+    }
+    list.append(row);
   });
   document.querySelector("#account-management-message").textContent = available.length
     ? available.length + " active rider profile(s) are ready for an invitation."
     : "Every active rider already has an account, or no active profiles are available.";
+}
+async function resendRiderInvitation(riderId, button) {
+  if (!isAdministrator()) return;
+  button.disabled = true;
+  button.textContent = "Resending…";
+  setModuleMessage("#account-management-message", "Generating a fresh secure invitation link…");
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("rider-account-management", {
+      body: { action: "resend_invitation", rider_id: riderId }
+    });
+    if (error || data?.error) throw new Error(data?.error || error?.message || "The invitation could not be resent.");
+    setModuleMessage("#account-management-message", data.message || "A fresh invitation has been sent.");
+    await loadRiderAccounts();
+  } catch (error) {
+    setModuleMessage("#account-management-message", error?.message || "The invitation could not be resent.", true);
+    button.disabled = false;
+    button.textContent = "Resend invitation";
+  }
 }
 async function inviteRiderAccount(event) {
   event.preventDefault();
