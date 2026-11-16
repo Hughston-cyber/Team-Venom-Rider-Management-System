@@ -15,6 +15,7 @@ const pageCopy = {
   overview: ["Operations overview.", "Your central workspace for riders, rosters and race-day operations."],
   riders: ["Rider directory.", "Manage rider profiles, contact records and eligibility."],
   rosters: ["Roster management.", "Build, review and publish race rosters and stint allocations."],
+  "roster-versions": ["Roster versions.", "Manage draft and published roster versions without overwriting existing schedules."],
   "race-day": ["Race-day control.", "Record actual stints, laps and race activity."],
   performance: ["Performance centre.", "Review rider participation and team performance statistics."],
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
@@ -40,7 +41,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["overview","riders","rosters","race-day","performance","notifications","settings"];
+  const views = ["overview","riders","rosters","roster-versions","race-day","performance","notifications","settings"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -50,6 +51,7 @@ function selectView(view) {
   if (view === "overview") loadOverview();
   if (view === "riders") loadRiders();
   if (view === "rosters") loadRosters();
+  if (view === "roster-versions") loadRosters();
   if (view === "race-day") loadRaceDay();
   if (view === "performance") loadPerformance();
   if (view === "notifications") loadNotifications();
@@ -841,6 +843,7 @@ async function createDraftFromRoster(sourceRoster, button) {
 
   button.disabled = false;
   button.textContent = "Create draft";
+  selectView("rosters");
   await loadRosters();
   document.querySelector("#manual-roster-select").value = newRoster.id;
   await loadManualStints();
@@ -925,6 +928,7 @@ function renderRosterRecords() {
         edit.className = "text-button";
         edit.textContent = "Edit draft";
         edit.addEventListener("click", () => {
+          selectView("rosters");
           const select = document.querySelector("#manual-roster-select");
           select.value = roster.id;
           select.dispatchEvent(new Event("change"));
@@ -1519,6 +1523,7 @@ document.querySelector("#bulk-roster-data").addEventListener("input", () => {
 });
 
 document.querySelector("#refresh-rosters").addEventListener("click", loadRosters);
+document.querySelector("#refresh-roster-versions").addEventListener("click", loadRosters);
 document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
 document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
 document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
