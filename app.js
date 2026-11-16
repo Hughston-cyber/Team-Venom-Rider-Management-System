@@ -1642,8 +1642,10 @@ function renderLiveRaceDisplay() {
     const pausedAt = raceClockState?.race_clock_paused_at;
     const stopRaceClockButton = document.querySelector("#stop-race-clock-button");
     const restartRaceClockButton = document.querySelector("#restart-race-clock-button");
+    const moreClockControls = document.querySelector("#race-clock-more-controls");
     const canControlClock = canManageOperations() && !!liveSelectedEventId;
     if (startedAt) {
+      if (moreClockControls) moreClockControls.hidden = false;
       const endTime = pausedAt ? new Date(pausedAt).getTime() : Date.now();
       const remaining = Math.max(0, duration - Math.floor((endTime - new Date(startedAt).getTime()) / 1000));
       const hours = Math.floor(remaining / 3600);
@@ -1663,6 +1665,7 @@ function renderLiveRaceDisplay() {
         restartRaceClockButton.disabled = !canControlClock;
       }
     } else {
+      if (moreClockControls) { moreClockControls.hidden = true; moreClockControls.open = false; }
       countdown.textContent = "24:00:00";
       raceClockLabel.textContent = "READY";
       raceClockStatus.textContent = "The race clock is ready to start.";
