@@ -1982,7 +1982,7 @@ async function loadRiderAccounts() {
   const available = riders.filter(rider => rider.status === "active");
   const selected = select.value;
   select.replaceChildren(new Option("Choose an active rider…", ""));
-  available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); option.dataset.username=(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
+  available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); option.dataset.username=rider.account?.username||(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
   if (available.some(item => item.id === selected)) select.value = selected;
   list.replaceChildren();
   if (!riders.length) {
@@ -2000,14 +2000,6 @@ async function loadRiderAccounts() {
     badge.className = "status-badge " + (rider.account ? (rider.account.status === "active" ? "status-active" : "status-inactive") : "status-inactive");
     badge.textContent = rider.account ? (rider.account.username ? "LOGIN ACTIVE" : "CREDENTIALS NEEDED") : "NOT LINKED";
     row.append(heading, detail, badge);
-    if (rider.account?.invitation_pending === true) {
-      const resendButton = document.createElement("button");
-      resendButton.type = "button";
-      resendButton.className = "text-button";
-      resendButton.textContent = "Resend invitation";
-      resendButton.addEventListener("click", () => resendRiderInvitation(rider.id, resendButton));
-      row.append(resendButton);
-    }
     list.append(row);
   });
   document.querySelector("#account-management-message").textContent = available.length
@@ -2039,8 +2031,7 @@ async function inviteRiderAccount(event) {
   try {
     const {data,error}=await supabaseClient.functions.invoke("rider-account-management",{body:{action:"set_credentials",rider_id:form.elements.rider_id.value,username:form.elements.username.value,password:form.elements.password.value,contact_email:form.elements.contact_email.value.trim()}});
     if(error||data?.error)throw new Error(data?.error||error?.message||"The rider login could not be saved.");
-    form.elements.password.value="";
-    setModuleMessage("#account-management-message",data.message+" Username: "+data.username+". The password is not displayed again.");
+    setModuleMessage("#account-management-message",data.message+" Username: "+data.username+". Keep the password available to share securely with the rider.");
     await loadRiderAccounts();
   } catch(error) {setModuleMessage("#account-management-message",error?.message||"The rider login could not be saved.",true);}
   finally {button.disabled=false;button.textContent="Create / update rider login";}
