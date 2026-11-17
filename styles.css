@@ -187,3 +187,60 @@
 #invite-password-form h2{font-size:24px;margin:0 0 8px}
 #invite-password-form .auth-copy{margin-bottom:18px}
 @media(max-width:600px){#rider-account-list .record-row{grid-template-columns:1fr}#rider-account-list .record-row .status-badge{grid-column:1;grid-row:auto;justify-self:start}}
+
+
+/* iPhone / iPad Home Screen app polish */
+html{min-height:100%;background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-height:100vh;min-height:100svh;padding:0}
+button,input,select,textarea{font:inherit}
+button,a,select{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+@media(max-width:650px){
+  .app-shell{min-height:100vh;min-height:100svh}
+  .topbar{
+    position:sticky;
+    top:0;
+    z-index:4;
+    height:calc(58px + env(safe-area-inset-top, 0px));
+    padding-top:env(safe-area-inset-top, 0px);
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px));
+    background:rgba(8,11,9,.94);
+    -webkit-backdrop-filter:blur(16px);
+    backdrop-filter:blur(16px)
+  }
+  .content{
+    padding-top:24px;
+    padding-bottom:calc(28px + env(safe-area-inset-bottom, 0px));
+    padding-left:max(16px, env(safe-area-inset-left, 0px));
+    padding-right:max(16px, env(safe-area-inset-right, 0px))
+  }
+  .sidebar{
+    padding-top:calc(27px + env(safe-area-inset-top, 0px));
+    padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+    padding-left:max(17px, env(safe-area-inset-left, 0px));
+    padding-right:max(17px, env(safe-area-inset-right, 0px));
+    height:100vh;
+    height:100dvh;
+    overflow-y:auto;
+    overscroll-behavior:contain
+  }
+  .nav-link{min-height:46px}
+  .mobile-menu{width:44px;height:44px;display:grid;place-items:center;border-radius:8px}
+  .mobile-menu:active{background:var(--surface2)}
+  .topbar-right{gap:10px}
+  .signout-button{min-height:40px;padding:8px 10px}
+  .auth-screen{
+    min-height:100vh;
+    min-height:100svh;
+    padding-top:calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom:calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-left:max(18px, env(safe-area-inset-left, 0px));
+    padding-right:max(18px, env(safe-area-inset-right, 0px))
+  }
+  .auth-card{padding:clamp(24px,7vw,38px)}
+  input,select,textarea{font-size:16px}
+}
+@media(display-mode:standalone){
+  body{min-height:100vh;min-height:100svh}
+}
