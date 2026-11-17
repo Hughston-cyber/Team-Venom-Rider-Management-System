@@ -87,6 +87,8 @@ function selectView(view) {
   title.append(accent);
   description.textContent = copy[1];
   breadcrumb.textContent = view.replace("-", " ").toUpperCase();
+  const clearLogButton = document.querySelector("#clear-changeover-log");
+  if (clearLogButton) clearLogButton.hidden = !canManageRiders();
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
@@ -113,6 +115,21 @@ document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
 });
 document.querySelector("#refresh-changeover-log")?.addEventListener("click", () => loadChangeoverLog());
+document.querySelector("#clear-changeover-log")?.addEventListener("click", async () => {
+  if (!canManageRiders() || !liveSelectedEventId) return;
+  const confirmed = window.confirm("Clear every changeover log for this event? This permanently deletes the test records and cannot be undone.");
+  if (!confirmed) return;
+  const button = document.querySelector("#clear-changeover-log");
+  button.disabled = true;
+  button.textContent = "Clearing…";
+  const { data, error } = await supabaseClient.rpc("clear_race_changeover_log", { p_event_id: liveSelectedEventId });
+  button.disabled = false;
+  button.textContent = "Clear logs";
+  if (error) { window.alert("Could not clear the changeover log: " + error.message); return; }
+  raceChangeoverLog = [];
+  renderChangeoverLog();
+  window.alert((Number(data) || 0) + " changeover record(s) cleared for this event.");
+});
 document.querySelector("#menu-toggle").addEventListener("click", () => {
   document.querySelector("#sidebar").classList.toggle("open");
 });
