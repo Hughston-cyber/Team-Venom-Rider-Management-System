@@ -45,11 +45,10 @@
       <div class="workspace-label">WORKSPACE</div>
       <nav class="nav" aria-label="Main navigation">
         <button class="nav-link active" data-view="rider-workspace" data-role="rider" hidden><span>♙</span> Rider workspace</button>
-        <button class="nav-link" data-view="overview" data-role="staff"><span>▦</span> Overview</button>
+        <button class="nav-link active" data-view="overview" data-role="staff"><span>◉</span> Race Control</button>
         <button class="nav-link" data-view="riders" data-role="staff"><span>♙</span> Riders</button>
         <button class="nav-link" data-view="rosters" data-role="staff"><span>▤</span> Rosters</button>
         <button class="nav-link" data-view="roster-versions" data-role="staff"><span>▧</span> Roster versions</button>
-        <button class="nav-link" data-view="race-day"><span>◷</span> Race day</button>
         <button class="nav-link" data-view="performance" data-role="staff"><span>↗</span> Performance</button>
         <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
         <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><span>♙</span> Account management</button>
@@ -69,41 +68,53 @@
 
       <section class="content">
         <div id="overview-content">
-        <div class="page-heading">
-          <div><p class="eyebrow">TEAM OPERATIONS / 2026 SEASON</p><h1 id="page-title">Operations overview<span>.</span></h1><p class="subheading" id="page-description">Your central workspace for riders, rosters and race-day operations.</p></div>
-          <div class="heading-actions"><span class="date-chip">SEASON 2026</span></div>
-        </div>
-
-        <div class="notice"><span class="notice-icon">i</span><div><strong>Database connected</strong><p>Your Team Venom workspace is connected to Supabase. Use the modules below to manage riders, schedules and race operations.</p></div></div>
-
-        <div class="section-heading"><div><p class="eyebrow">AT A GLANCE</p><h2>Team snapshot</h2></div><span class="muted" id="overview-updated">Live database summary</span></div>
-        <div class="stats-grid">
-          <article class="stat-card"><div class="stat-label">REGISTERED RIDERS <span>♙</span></div><div class="stat-value" id="overview-riders">—</div><div class="stat-foot">Registered team riders</div></article>
-          <article class="stat-card"><div class="stat-label">UPCOMING EVENTS <span>▣</span></div><div class="stat-value" id="overview-events">—</div><div class="stat-foot">Upcoming and active events</div></article>
-          <article class="stat-card"><div class="stat-label">ROSTERED STINTS <span>◷</span></div><div class="stat-value" id="overview-stints">—</div><div class="stat-foot">Saved roster allocations</div></article>
-          <article class="stat-card"><div class="stat-label">SYSTEM ALERTS <span>!</span></div><div class="stat-value" id="overview-alerts">—</div><div class="stat-foot">Unread in-app notifications</div></article>
-        </div>
-
-        <div class="dashboard-grid">
-          <article class="panel">
-            <div class="panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>Quick access</h2></div><span class="panel-tag">CORE MODULES</span></div>
-            <div class="quick-grid">
-              <button class="quick-card" data-view="riders"><span class="quick-icon">♙</span><strong>Rider directory</strong><small>Profiles, details and eligibility</small><b>→</b></button>
-              <button class="quick-card" data-view="rosters"><span class="quick-icon">▤</span><strong>Roster management</strong><small>Upload, review and allocate stints</small><b>→</b></button>
-              <button class="quick-card" data-view="race-day"><span class="quick-icon">◷</span><strong>Race-day control</strong><small>Track stints and attendance</small><b>→</b></button>
-              <button class="quick-card" data-view="performance"><span class="quick-icon">↗</span><strong>Performance centre</strong><small>Review team and rider statistics</small><b>→</b></button>
+          <div class="page-heading race-control-heading">
+            <div><p class="eyebrow">TEAM VENOM / LIVE OPERATIONS</p><h1 id="page-title">Race Control<span>.</span></h1><p class="subheading" id="page-description">Your live command centre for race-day operations, rider handovers and team coordination.</p></div>
+            <div class="heading-actions"><span class="date-chip" id="race-control-event">LOADING EVENT</span><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div>
+          </div>
+          <div class="race-control-statusbar"><span class="race-control-status-dot"></span><strong id="race-control-event-status">CONNECTING TO LIVE OPERATIONS</strong><span class="race-control-status-time" id="overview-updated">LIVE SYNC</span></div>
+          <section class="live-race-display race-control-live-display" aria-label="Live rider handover display">
+            <article class="live-rider-panel">
+              <p class="eyebrow">CURRENTLY RIDING</p><div class="live-rider-photo" id="current-photo"><span class="live-rider-placeholder">—</span></div>
+              <h2 id="current-name">Waiting for roster data…</h2><p class="live-rider-event" id="current-detail">Current published stint</p><p class="live-rider-time" id="current-time"></p>
+            </article>
+            <article class="live-clock-panel">
+              <p class="eyebrow">LOCAL EVENT TIME</p><time id="live-current-time" class="live-current-time">--:--:--</time>
+              <p class="live-clock-caption">CURRENT TIME</p>
+              <button class="primary-button live-changeover-button" id="rider-changeover-button" type="button" disabled>RIDER CHANGEOVER</button>
+            </article>
+            <article class="live-rider-panel next-rider-panel">
+              <p class="eyebrow">NEXT RIDING</p><div class="live-rider-photo" id="next-photo"><span class="live-rider-placeholder">—</span></div>
+              <h2 id="next-name">Waiting for roster data…</h2><p class="live-rider-event" id="next-detail">Next published stint</p><p class="live-rider-time" id="next-time"></p>
+            </article>
+          </section>
+          <section class="race-clock-layout race-control-clock-layout" aria-label="Race clock and live controls">
+            <article class="race-countdown-panel">
+              <div class="race-clock-heading"><p class="eyebrow">24-HOUR EVENT TIMER</p><span class="race-clock-live" id="race-clock-live-label">READY</span></div>
+              <time id="race-countdown" class="race-countdown">24:00:00</time>
+              <p class="race-clock-status" id="race-clock-status">The race clock is ready to start.</p>
+              <div class="race-clock-actions"><button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
+                <details class="race-clock-more-controls" id="race-clock-more-controls" hidden><summary>MORE CLOCK CONTROLS</summary><div class="race-clock-more-menu">
+                  <button class="text-button race-clock-stop-button" id="stop-race-clock-button" type="button" disabled>STOP CLOCK</button><button class="text-button race-clock-reset-button" id="restart-race-clock-button" type="button" disabled>↻ RESTART CLOCK</button>
+                </div></details>
+              </div>
+            </article>
+            <article class="stat-card live-admin-card race-control-team-card">
+              <div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the team directory</div>
+              <div class="live-admin-controls"><button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button><button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button></div>
+              <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
+            </article>
+          </section>
+          <section class="race-control-quick-section">
+            <div class="section-heading"><div><p class="eyebrow">COMMAND SHORTCUTS</p><h2>Operations desk</h2></div><span class="muted">Quick access</span></div>
+            <div class="race-control-quick-grid">
+              <button class="race-control-quick-card" type="button" data-view="rosters"><span>▤</span><strong>Roster management</strong><small>Review schedules and stint allocations</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="riders"><span>♙</span><strong>Rider directory</strong><small>Open rider profiles and team records</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="notifications"><span>◉</span><strong>Team notifications</strong><small>Announcements and operational alerts</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="performance"><span>↗</span><strong>Performance centre</strong><small>Recorded laps and rider statistics</small><b>→</b></button>
             </div>
-          </article>
-          <article class="panel build-panel">
-            <div class="panel-heading"><div><p class="eyebrow">PROJECT STATUS</p><h2>Build progress</h2></div><span class="live-indicator">BETA WORKSPACE</span></div>
-            <div class="progress-row"><span>Authentication &amp; role checks</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
-            <div class="progress-row"><span>Rider directory &amp; private notes</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
-            <div class="progress-row"><span>Roster builder</span><strong>Connected</strong></div><div class="progress-track"><span style="width:100%"></span></div>
-            <div class="progress-row"><span>Race-day &amp; reporting tools</span><strong>Beta</strong></div><div class="progress-track"><span style="width:75%"></span></div>
-            <p class="build-note">Beta release. Validate workflows and permissions before operational use.</p>
-          </article>
-        </div>
-        <footer>TEAM VENOM <span>•</span> RIDER MANAGEMENT SYSTEM <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+          </section>
+          <footer>TEAM VENOM <span>•</span> RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
         </div>
         <div id="rider-workspace-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM VENOM / RIDER ACCESS</p><h1>Your rider workspace<span>.</span></h1><p class="subheading">Your profile and published upcoming stints, all in one place.</p></div><div class="heading-actions"><button class="text-button" type="button" data-view="race-day">Open race-day monitor</button></div></div>
@@ -251,56 +262,6 @@
           </div>
         </div>
 
-        <div id="race-day-content" hidden>
-          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / LIVE EVENT</p><h1>Race-day control<span>.</span></h1><p class="subheading">Monitor live rider handovers and the 24-hour race clock.</p></div><div class="heading-actions"><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div></div>
-          <section class="live-race-display" aria-label="Live rider handover display">
-            <article class="live-rider-panel">
-              <p class="eyebrow">CURRENTLY RIDING</p>
-              <div class="live-rider-photo" id="current-photo"><span class="live-rider-placeholder">—</span></div>
-              <h2 id="current-name">Waiting for roster data…</h2>
-              <p class="live-rider-event" id="current-detail">Current published stint</p>
-              <p class="live-rider-time" id="current-time"></p>
-            </article>
-            <article class="live-clock-panel">
-              <p class="eyebrow">CURRENT TIME</p>
-              <time id="live-current-time" class="live-current-time">--:--:--</time>
-              <p class="live-clock-caption">LOCAL EVENT TIME</p>
-              <button class="primary-button live-changeover-button" id="rider-changeover-button" type="button" disabled>RIDER CHANGEOVER</button>
-            </article>
-            <article class="live-rider-panel next-rider-panel">
-              <p class="eyebrow">NEXT RIDING</p>
-              <div class="live-rider-photo" id="next-photo"><span class="live-rider-placeholder">—</span></div>
-              <h2 id="next-name">Waiting for roster data…</h2>
-              <p class="live-rider-event" id="next-detail">Next published stint</p>
-              <p class="live-rider-time" id="next-time"></p>
-            </article>
-          </section>
-          <section class="race-clock-layout" aria-label="Race clock and live controls">
-            <article class="race-countdown-panel">
-              <div class="race-clock-heading"><p class="eyebrow">24-HOUR EVENT TIMER</p><span class="race-clock-live" id="race-clock-live-label">READY</span></div>
-              <time id="race-countdown" class="race-countdown">24:00:00</time>
-              <p class="race-clock-status" id="race-clock-status">The race clock is ready to start.</p>
-              <div class="race-clock-actions">
-                <button class="primary-button race-clock-start-button" id="start-race-clock-button" type="button" disabled>START RACE CLOCK</button>
-                <details class="race-clock-more-controls" id="race-clock-more-controls" hidden>
-                  <summary>MORE CLOCK CONTROLS</summary>
-                  <div class="race-clock-more-menu">
-                    <button class="text-button race-clock-stop-button" id="stop-race-clock-button" type="button" disabled>STOP CLOCK</button>
-                    <button class="text-button race-clock-reset-button" id="restart-race-clock-button" type="button" disabled>↻ RESTART CLOCK</button>
-                  </div>
-                </details>
-              </div>
-            </article>
-            <article class="stat-card live-admin-card">
-              <div class="stat-label">ACTIVE RIDERS</div><div class="stat-value" id="race-day-riders">—</div><div class="stat-foot">Available in the directory</div>
-              <div class="live-admin-controls">
-                <button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button>
-                <button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button>
-              </div>
-              <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
-            </article>
-          </section>
-        </div>
         <div id="performance-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM DATA / ANALYTICS</p><h1>Performance centre<span>.</span></h1><p class="subheading">A live summary of recorded race participation and rider performance.</p></div><div class="heading-actions"><button class="text-button" id="refresh-performance" type="button">↻ Refresh</button></div></div>
           <div class="profile-stats-grid">
