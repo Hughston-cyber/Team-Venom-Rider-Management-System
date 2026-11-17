@@ -1890,21 +1890,41 @@ async function performRiderChangeover() {
   status.classList.remove("error-state");
   status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
   void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
-  const eventStints = raceDayRosterStints
-    .filter(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published")
-    .sort((left, right) => new Date(left.scheduled_start).getTime() - new Date(right.scheduled_start).getTime());
-  const currentIndex = eventStints.findIndex(item => item.id === data?.current_roster_stint_id);
-  const nextStint = currentIndex >= 0 ? eventStints[currentIndex + 1] : null;
-  if (nextStint?.rider_id) {
-    const nextName = liveRiderName(nextStint);
-    const { data: nextAlert, error: nextAlertError } = await supabaseClient.functions.invoke("push-notifications", {
-      body: { action: "notify_next_rider", event_id: liveSelectedEventId, rider_id: nextStint.rider_id }
-    });
-    if (nextAlertError || nextAlert?.error) {
-      console.warn("Next rider notification could not be delivered:", nextAlert?.error || nextAlertError?.message);
-      status.textContent += " · Next rider alert could not be sent.";
+  // Read the saved live state and published roster again so the targeted alert
+  // does not depend on a possibly stale in-memory roster list.
+  const { data: refreshedState, error: refreshedStateError } = await supabaseClient
+    .from("live_race_state")
+    .select("current_roster_stint_id")
+    .eq("event_id", liveSelectedEventId)
+    .maybeSingle();
+  const currentStintId = data?.current_roster_stint_id || refreshedState?.current_roster_stint_id;
+  const { data: eventStints, error: eventStintsError } = await supabaseClient
+    .from("roster_stints")
+    .select("id,rider_id,scheduled_start,stint_number,riders(first_name,last_name,preferred_name),rosters!inner(event_id,status)")
+    .eq("rosters.event_id", liveSelectedEventId)
+    .eq("rosters.status", "published")
+    .order("scheduled_start", { ascending: true })
+    .order("stint_number", { ascending: true });
+  if (refreshedStateError || eventStintsError) {
+    console.warn("Next rider roster lookup failed:", refreshedStateError?.message || eventStintsError?.message);
+    status.textContent += " · Could not look up the next rider.";
+  } else {
+    const currentIndex = (eventStints || []).findIndex(item => item.id === currentStintId);
+    const nextStint = currentIndex >= 0 ? eventStints[currentIndex + 1] : null;
+    if (nextStint?.rider_id) {
+      const nextName = liveRiderName(nextStint);
+      const { data: nextAlert, error: nextAlertError } = await supabaseClient.functions.invoke("push-notifications", {
+        body: { action: "notify_next_rider", event_id: liveSelectedEventId, rider_id: nextStint.rider_id }
+      });
+      if (nextAlertError || nextAlert?.error) {
+        console.warn("Next rider notification could not be delivered:", nextAlert?.error || nextAlertError?.message);
+        status.textContent += " · Next rider alert could not be sent.";
+      } else {
+        status.textContent += " · " + nextName + " notified for their upcoming stint.";
+      }
     } else {
-      status.textContent += " · " + nextName + " notified for their upcoming stint.";
+      console.warn("Next rider alert skipped: current stint not found or no later published stint.", { currentStintId, eventId: liveSelectedEventId });
+      status.textContent += " · Next rider could not be identified.";
     }
   }
   renderLiveRaceDisplay();
