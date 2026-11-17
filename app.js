@@ -1714,6 +1714,19 @@ function renderLiveRiderCard(prefix, stint, emptyTitle, emptyDetail) {
   detail.textContent = stint.rosters?.race_events?.event_name || "Team Venom";
   time.textContent = prefix === "next" ? "TIME IN · " + liveTime(stint.scheduled_start) : "";
 }
+function renderUpcomingRiders(stints, currentIndex) {
+  const list = document.querySelector("#upcoming-rider-list");
+  const section = document.querySelector("#upcoming-riders");
+  if (!list || !section) return;
+  list.replaceChildren();
+  const upcoming = currentIndex >= 0 ? stints.slice(currentIndex + 2, currentIndex + 7) : [];
+  section.hidden = upcoming.length === 0;
+  upcoming.forEach(stint => {
+    const item = document.createElement("li");
+    item.textContent = liveRiderName(stint);
+    list.append(item);
+  });
+}
 function renderLiveRaceDisplay() {
   const clock = document.querySelector("#live-current-time");
   if (!clock) return;
@@ -1806,6 +1819,7 @@ function renderLiveRaceDisplay() {
   }
   renderLiveRiderCard("current", current, "No rider currently scheduled", "Waiting for a published stint");
   renderLiveRiderCard("next", next, "No upcoming rider", "No future published stint found");
+  renderUpcomingRiders(chosenStints, current ? chosenStints.findIndex(item => item.id === current.id) : -1);
   const button = document.querySelector("#rider-changeover-button");
   if (button) button.disabled = !canManageOperations() || !current || !next;
   const undoButton = document.querySelector("#undo-rider-changeover-button");
