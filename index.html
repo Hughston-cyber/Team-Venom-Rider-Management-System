@@ -346,6 +346,7 @@
               <label>Username<input id="account-username" name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9]+" autocomplete="off" autocapitalize="none" required></label>
               <label>Permanent password<input name="password" type="password" minlength="10" maxlength="72" autocomplete="new-password" required></label>
               <label>Contact email <span class="muted">(optional)</span><input name="contact_email" type="email" maxlength="254" autocomplete="off" placeholder="rider@example.com"></label>
+              <label class="account-role-option"><span><input type="checkbox" name="is_administrator"> Administrator access</span><small>Grants access to administrator tools and team operations. The account holder signs in with the rider username and password.</small></label>
               <div class="form-actions"><button class="primary-button" id="invite-rider-account" type="submit">Create / update rider login</button></div>
             </form>
             <p class="profile-note-help">The username is suggested from the rider's first and last name. Usernames are case-insensitive; passwords are case-sensitive. Passwords are securely managed by Supabase. Share the assigned credentials directly with the rider.</p>
