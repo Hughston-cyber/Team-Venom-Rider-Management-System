@@ -27,7 +27,8 @@
         <label for="login-mode">Login area</label>
         <select id="login-mode" name="login_mode"><option value="rider">Rider Workspace</option><option value="admin">Team Admin</option></select>
         <div id="login-username-field"><label for="login-username">Rider username</label><input id="login-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
-        <div id="login-email-field" hidden><label for="login-email">Administrator email</label><input id="login-email" name="email" type="email" autocomplete="username"></div>
+        <div id="login-email-field" hidden><label for="login-email">Administrator email</label><input id="login-email" name="email" type="email" autocomplete="username" autocapitalize="none"></div>
+        <div id="login-otp-field" hidden><label for="login-otp">Six-digit sign-in code</label><input id="login-otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" aria-describedby="login-hint"></div>
         <div id="login-password-field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
         <p class="auth-copy auth-login-hint" id="login-hint">Rider usernames are not case-sensitive. Passwords are case-sensitive.</p>
         <button class="auth-submit" id="login-submit" type="submit">Sign in <span>→</span></button>
