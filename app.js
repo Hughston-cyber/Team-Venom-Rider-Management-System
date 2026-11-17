@@ -1899,7 +1899,13 @@ async function startRaceFromGrid() {
     renderLiveRaceDisplay();
     return;
   }
-  if (riderData) liveRaceStateByEvent[riderData.event_id] = riderData;
+  if (!riderData?.current_roster_stint_id || riderData.current_roster_stint_id !== firstStint.id) {
+    clockStatus.textContent = "Race start stopped: the database did not confirm Hugh's first rostered stint. The race clock has not been started.";
+    clockStatus.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  liveRaceStateByEvent[riderData.event_id] = riderData;
 
   const { data: clockData, error: clockError } = await supabaseClient.rpc("start_live_race_clock", { p_event_id: liveSelectedEventId });
   if (clockError) {
