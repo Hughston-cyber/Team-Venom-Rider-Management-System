@@ -12,6 +12,7 @@ const description = document.querySelector("#page-description");
 const breadcrumb = document.querySelector("#breadcrumb-current");
 
 const pageCopy = {
+  "rider-workspace": ["Rider workspace.", "Your personal Team Venom rider information and upcoming rostered stints."],
   overview: ["Operations overview.", "Your central workspace for riders, rosters and race-day operations."],
   riders: ["Rider directory.", "Manage rider profiles, contact records and eligibility."],
   rosters: ["Roster management.", "Build, review and publish race rosters and stint allocations."],
@@ -38,6 +39,10 @@ function showMessage(message, isError = true) {
 
 function selectView(view) {
   if (view === "accounts" && !isAdministrator()) view = "overview";
+  if (currentRoles.includes("member") && !currentRoles.some(role => ["administrator", "manager"].includes(role))) {
+    const memberViews = ["rider-workspace", "race-day", "notifications", "settings"];
+    if (!memberViews.includes(view)) view = "rider-workspace";
+  }
   const copy = pageCopy[view] || pageCopy.overview;
   title.textContent = copy[0];
   const accent = document.createElement("span");
@@ -47,13 +52,14 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["overview","riders","rosters","roster-versions","race-day","performance","notifications","accounts","settings"];
+  const views = ["rider-workspace","overview","riders","rosters","roster-versions","race-day","performance","notifications","accounts","settings"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
   });
   document.querySelector("#rider-profile-content").hidden = true;
   document.querySelector("#sidebar").classList.remove("open");
+  if (view === "rider-workspace") loadRiderWorkspace();
   if (view === "overview") loadOverview();
   if (view === "riders") loadRiders();
   if (view === "rosters") loadRosters();
@@ -511,7 +517,7 @@ function restoreLoginButton() {
     loginCooldownTimer = null;
   }
   loginButton.disabled = false;
-  loginButton.innerHTML = 'Email sign-in link <span>→</span>';
+  updateLoginModeFields();
 }
 
 function applyLoginCooldown(message) {
@@ -526,119 +532,62 @@ function applyLoginCooldown(message) {
   }, 60_000);
 }
 
-async function showAuthenticatedWorkspace(session) {
-  const renderVersion = ++authRenderVersion;
-  if (!session?.user) {
-    currentProfile = null;
-    currentUser = null;
-    currentRoles = [];
-    appShell.hidden = true;
-    authScreen.hidden = false;
-    loginForm.hidden = false;
-    return;
-  }
-
-  const userId = session.user.id;
-  const [profileResult, roleResult] = await Promise.all([
-    supabaseClient.from("member_profiles").select("display_name,status").eq("user_id", userId).maybeSingle(),
-    supabaseClient.from("member_roles").select("role").eq("user_id", userId)
+async function loadRiderWorkspace() {
+  const message = document.querySelector("#rider-workspace-message");
+  const details = document.querySelector("#rider-workspace-details");
+  const stintsList = document.querySelector("#rider-workspace-stints");
+  if (!currentRiderId || !currentUser) { message.textContent = "Your rider profile is not linked. Please contact a Team Venom administrator."; details.replaceChildren(); stintsList.replaceChildren(); return; }
+  message.textContent = "Loading your rider information…";
+  const [{ data: rider, error: riderError }, { data: stints, error: stintsError }] = await Promise.all([
+    supabaseClient.from("riders").select("id,first_name,last_name,preferred_name,rider_number,status").eq("id", currentRiderId).maybeSingle(),
+    supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,rosters!inner(status)").eq("rider_id", currentRiderId).eq("rosters.status", "published").gte("scheduled_end", new Date().toISOString()).order("scheduled_start", { ascending: true }).limit(20)
   ]);
-
-  // Ignore stale requests if another auth event arrived while these checks were running.
-  if (renderVersion !== authRenderVersion) return;
-
-  if (profileResult.error || roleResult.error) {
-    appShell.hidden = true;
-    authScreen.hidden = false;
-    showMessage("We couldn't verify your team access. Please refresh and try again. If the problem continues, contact an administrator.");
-    return;
-  }
-
-  const profile = profileResult.data;
-  const roles = (roleResult.data || []).map(item => item.role);
-  if (!profile || profile.status !== "active" || roles.length === 0) {
-    appShell.hidden = true;
-    authScreen.hidden = false;
-    showMessage("Your account is not yet authorised. Please contact a Team Venom administrator.");
-    await supabaseClient.auth.signOut();
-    return;
-  }
-
-  currentProfile = profile;
-  currentUser = session.user;
-  currentRoles = roles;
-
-  document.querySelector("#account-name").textContent = profile.display_name || "Team member";
-  document.querySelector("#account-role").textContent = currentRoles[0].toUpperCase();
-  document.querySelector("#add-rider-toggle").hidden = !canManageRiders();
-  document.querySelector("#account-management-nav").hidden = !isAdministrator();
-  document.querySelector("#new-event-toggle").hidden = !rosterCanManage();
-  document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
-  document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control => { control.disabled = !rosterCanManage(); });
-  document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control => { control.disabled = !rosterCanManage(); });
-  appShell.hidden = false;
-  authScreen.hidden = true;
-  selectView("race-day");
+  if (riderError || !rider) { message.textContent = "Your rider profile could not be loaded. Contact a Team Venom administrator."; return; }
+  details.replaceChildren(); const name = document.createElement("h2");
+  name.textContent = rider.preferred_name ? rider.preferred_name + " " + rider.last_name : rider.first_name + " " + rider.last_name;
+  const meta = document.createElement("p"); meta.textContent = (rider.rider_number ? "Rider number #" + rider.rider_number + " · " : "") + "Account status: " + rider.status; details.append(name, meta);
+  stintsList.replaceChildren();
+  if (stintsError) { const error = document.createElement("p"); error.textContent = "Your published roster could not be loaded. Please refresh or contact an administrator."; stintsList.append(error); }
+  else if (!stints?.length) { const empty = document.createElement("p"); empty.textContent = "You have no upcoming published stints."; stintsList.append(empty); }
+  else stints.forEach(stint => { const item = document.createElement("article"); item.className = "record-row"; const heading = document.createElement("strong"); heading.textContent = "Stint " + stint.stint_number; const when = document.createElement("small"); when.textContent = new Date(stint.scheduled_start).toLocaleString("en-AU") + " – " + new Date(stint.scheduled_end).toLocaleTimeString("en-AU"); item.append(heading, when); stintsList.append(item); });
+  message.textContent = "This is your personal rider workspace.";
 }
 
-loginForm.addEventListener("submit", async event => {
-  event.preventDefault();
-  if (loginRequestInProgress) return;
+async function showAuthenticatedWorkspace(session) {
+  const renderVersion = ++authRenderVersion;
+  if (!session?.user) { currentProfile=null; currentUser=null; currentRiderId=null; currentRoles=[]; appShell.hidden=true; authScreen.hidden=false; loginForm.hidden=false; return; }
+  const userId=session.user.id;
+  const [profileResult,roleResult]=await Promise.all([supabaseClient.from("member_profiles").select("display_name,status").eq("user_id",userId).maybeSingle(),supabaseClient.from("member_roles").select("role").eq("user_id",userId)]);
+  if(renderVersion!==authRenderVersion)return;
+  if(profileResult.error||roleResult.error){appShell.hidden=true;authScreen.hidden=false;showMessage("We couldn’t verify your team access. Please refresh and try again.");return;}
+  const profile=profileResult.data; const roles=(roleResult.data||[]).map(item=>item.role);
+  const isAdmin=roles.includes("administrator"); const isMemberOnly=roles.includes("member")&&!roles.some(role=>["administrator","manager"].includes(role));
+  if(!profile||profile.status!=="active"||!roles.length||(lastLoginMode==="admin"&&!isAdmin)||(lastLoginMode==="rider"&&!roles.includes("member"))){appShell.hidden=true;authScreen.hidden=false;showMessage("This account is not authorised for that login area. Check your login type or contact a Team Venom administrator.");await supabaseClient.auth.signOut();return;}
+  if(isMemberOnly){const {data:link,error:linkError}=await supabaseClient.from("rider_account_links").select("rider_id").eq("user_id",userId).maybeSingle();if(linkError||!link?.rider_id){appShell.hidden=true;authScreen.hidden=false;showMessage("Your rider login is not linked to a rider profile. Contact a Team Venom administrator.");await supabaseClient.auth.signOut();return;}currentRiderId=link.rider_id;}else currentRiderId=null;
+  currentProfile=profile;currentUser=session.user;currentRoles=roles;
+  document.querySelector("#account-name").textContent=profile.display_name||"Team member";document.querySelector("#account-role").textContent=isMemberOnly?"RIDER":roles[0].toUpperCase();
+  document.querySelector("#add-rider-toggle").hidden=!canManageRiders();document.querySelector("#account-management-nav").hidden=!isAdministrator();document.querySelector("#new-event-toggle").hidden=!rosterCanManage();
+  document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!rosterCanManage();});document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!rosterCanManage();});document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control=>{control.disabled=!rosterCanManage();});
+  document.querySelectorAll("[data-role=staff]").forEach(node=>{node.hidden=isMemberOnly;});document.querySelectorAll("[data-role=rider]").forEach(node=>{node.hidden=!isMemberOnly;});
+  appShell.hidden=false;authScreen.hidden=true;selectView(isMemberOnly?"rider-workspace":"race-day");
+}
 
-  const remaining = loginCooldownUntil - Date.now();
-  if (remaining > 0) {
-    showMessage("Please wait a little longer before requesting another sign-in email.");
-    return;
-  }
-
-  const email = document.querySelector("#login-email").value.trim().toLowerCase();
-  if (!email) {
-    showMessage("Enter your registered email address.");
-    return;
-  }
-
-  loginRequestInProgress = true;
-  loginButton.disabled = true;
-  loginButton.textContent = "Sending link…";
-  showMessage("");
-
-  let cooldownApplied = false;
-  try {
-    const { data, error } = await supabaseClient.functions.invoke("send-login-link", {
-      body: { email }
-    });
-
-    if (error || data?.error) {
-      const status = error?.context?.status ?? error?.status;
-      const isRateLimited = status === 429 || /wait before requesting/i.test(data?.error || error?.message || "");
-      if (isRateLimited) {
-        cooldownApplied = true;
-        applyLoginCooldown("Please wait before requesting another sign-in email. Team Venom protects sign-in emails from repeated requests.");
-      } else {
-        showMessage(data?.error || "We couldn't send the sign-in email. Please check your connection and try again shortly.");
-      }
-    } else {
-      cooldownApplied = true;
-      applyLoginCooldown("If this email is linked to an active Team Venom account, a one-time sign-in link has been sent from Team Venom Gmail. Check your inbox and spam folder. Use the newest link only once.");
-      showMessage("If this email is linked to an active Team Venom account, a one-time sign-in link has been sent from Team Venom Gmail. Check your inbox and spam folder. Use the newest link only once.", false);
-    }
-  } catch (error) {
-    console.error("Sign-in email request failed:", error);
-    showMessage("We couldn't contact the sign-in service. Check your internet connection and try again.");
-  } finally {
-    loginRequestInProgress = false;
-    if (!cooldownApplied) restoreLoginButton();
-  }
+const loginModeSelect=document.querySelector("#login-mode");
+function updateLoginModeFields(){const riderMode=loginModeSelect.value==="rider";document.querySelector("#login-username-field").hidden=!riderMode;document.querySelector("#login-email-field").hidden=riderMode;loginButton.innerHTML=riderMode?'Sign in to Rider Workspace <span>→</span>':'Sign in to Team Admin <span>→</span>';}
+loginModeSelect.addEventListener("change",updateLoginModeFields);updateLoginModeFields();
+loginForm.addEventListener("submit",async event=>{
+  event.preventDefault();if(loginRequestInProgress)return;
+  const mode=loginModeSelect.value;const password=document.querySelector("#login-password").value;
+  const identity=mode==="rider"?document.querySelector("#login-username").value.trim().replace(/[^a-z0-9]/gi,"").toLowerCase():document.querySelector("#login-email").value.trim().toLowerCase();
+  if(!identity||!password){showMessage("Enter your username or email address and password.");return;}
+  if(mode==="rider"&&!/^[a-z0-9]{3,32}$/.test(identity)){showMessage("Enter your rider username using 3–32 letters or numbers.");return;}
+  if(mode==="admin"&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
+  loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent="Signing in…";showMessage("");lastLoginMode=mode;
+  try{const email=mode==="rider"?identity+"@riders.teamvenom.invalid":identity;const {error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){showMessage("Sign-in failed. Check your details and login type, then try again.");lastLoginMode=null;}}
+  catch(error){console.error("Password sign-in failed:",error);showMessage("The sign-in service is unavailable. Please try again shortly.");lastLoginMode=null;}
+  finally{loginRequestInProgress=false;loginButton.disabled=false;updateLoginModeFields();}
 });
-
-// INITIAL_SESSION is emitted by Supabase when the client restores its stored session.
-// Use one auth event listener instead of racing it against a separate getSession() call.
-supabaseClient.auth.onAuthStateChange((event, session) => {
-  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) {
-    setTimeout(() => { void showAuthenticatedWorkspace(session); }, 0);
-  }
-});
-
+supabaseClient.auth.onAuthStateChange((event,session)=>{if(["INITIAL_SESSION","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)){setTimeout(()=>{void showAuthenticatedWorkspace(session);},0);}});
 // ROSTER MANAGEMENT
 let rosterEvents = [];
 let rosterRiders = [];
@@ -1604,6 +1553,8 @@ document.querySelector("#manual-stint-form").querySelectorAll("input,select,butt
 /* APPLICATION MODULES */
 let currentProfile = null;
 let currentUser = null;
+let currentRiderId = null;
+let lastLoginMode = null;
 let raceDayRosterStints = [];
 let liveRaceStateByEvent = {};
 let liveSelectedEventId = null;
@@ -2029,14 +1980,14 @@ async function loadRiderAccounts() {
     return;
   }
   const riders = data?.riders || [];
-  const available = riders.filter(rider => rider.status === "active" && !rider.account);
+  const available = riders.filter(rider => rider.status === "active");
   const selected = select.value;
   select.replaceChildren(new Option("Choose an active rider…", ""));
-  available.forEach(rider => select.add(new Option(displayRiderName(rider), rider.id)));
+  available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); option.dataset.username=(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
   if (available.some(item => item.id === selected)) select.value = selected;
   const linkSelected = linkSelect.value;
   linkSelect.replaceChildren(new Option("Choose an active rider…", ""));
-  available.forEach(rider => linkSelect.add(new Option(displayRiderName(rider), rider.id)));
+  available.filter(rider=>!rider.account).forEach(rider=>linkSelect.add(new Option(displayRiderName(rider),rider.id)));
   if (available.some(item => item.id === linkSelected)) linkSelect.value = linkSelected;
   list.replaceChildren();
   if (!riders.length) {
@@ -2048,11 +1999,11 @@ async function loadRiderAccounts() {
     const heading = document.createElement("strong"); heading.textContent = displayRiderName(rider);
     const detail = document.createElement("small");
     detail.textContent = rider.account
-      ? rider.account.email + " · Account " + rider.account.status
+      ? (rider.account.username ? "Username: " + rider.account.username + " · " : "") + rider.account.email + " · Account " + rider.account.status
       : rider.status === "active" ? "No login account linked" : "Rider is not active · invitation unavailable";
     const badge = document.createElement("span");
     badge.className = "status-badge " + (rider.account ? (rider.account.status === "active" ? "status-active" : "status-inactive") : "status-inactive");
-    badge.textContent = rider.account ? "ACCOUNT LINKED" : "NOT LINKED";
+    badge.textContent = rider.account ? (rider.account.username ? "LOGIN ACTIVE" : "CREDENTIALS NEEDED") : "NOT LINKED";
     row.append(heading, detail, badge);
     if (rider.account?.invitation_pending === true) {
       const resendButton = document.createElement("button");
@@ -2065,8 +2016,8 @@ async function loadRiderAccounts() {
     list.append(row);
   });
   document.querySelector("#account-management-message").textContent = available.length
-    ? available.length + " active rider profile(s) are ready for an invitation."
-    : "Every active rider already has an account, or no active profiles are available.";
+    ? available.length + " active rider profile(s) available. Select one to create or reset its username and password."
+    : "No active rider profiles are available.";
 }
 async function resendRiderInvitation(riderId, button) {
   if (!isAdministrator()) return;
@@ -2086,24 +2037,18 @@ async function resendRiderInvitation(riderId, button) {
     button.textContent = "Resend invitation";
   }
 }
-async function inviteRiderAccount(event) {
-  event.preventDefault();
-  if (!isAdministrator()) return;
-  const form = event.currentTarget;
-  const button = document.querySelector("#invite-rider-account");
-  button.disabled = true; button.textContent = "Sending invitation…";
-  setModuleMessage("#account-management-message", "Creating the account and sending the invitation…");
-  const { data, error } = await supabaseClient.functions.invoke("rider-account-management", {
-    body: { action: "invite", rider_id: form.elements.rider_id.value, email: form.elements.email.value.trim() }
-  });
-  button.disabled = false; button.textContent = "Send invitation";
-  if (error || data?.error) {
-    setModuleMessage("#account-management-message", data?.error || error?.message || "The invitation could not be sent.", true);
-    return;
-  }
-  form.reset();
-  setModuleMessage("#account-management-message", "Invitation sent to " + data.email + " for " + data.rider + ". They must accept the email and create their own password.");
-  await loadRiderAccounts();
+async async function inviteRiderAccount(event) {
+  event.preventDefault(); if (!isAdministrator()) return;
+  const form=event.currentTarget; const button=document.querySelector("#invite-rider-account");
+  button.disabled=true;button.textContent="Saving login…";setModuleMessage("#account-management-message","Creating or updating the rider login securely…");
+  try {
+    const {data,error}=await supabaseClient.functions.invoke("rider-account-management",{body:{action:"set_credentials",rider_id:form.elements.rider_id.value,username:form.elements.username.value,password:form.elements.password.value,contact_email:form.elements.contact_email.value.trim()}});
+    if(error||data?.error)throw new Error(data?.error||error?.message||"The rider login could not be saved.");
+    form.elements.password.value="";
+    setModuleMessage("#account-management-message",data.message+" Username: "+data.username+". The password is not displayed again.");
+    await loadRiderAccounts();
+  } catch(error) {setModuleMessage("#account-management-message",error?.message||"The rider login could not be saved.",true);}
+  finally {button.disabled=false;button.textContent="Create / update rider login";}
 }
 async function linkExistingRiderAccount(event) {
   event.preventDefault();
@@ -2128,6 +2073,7 @@ async function linkExistingRiderAccount(event) {
 }
 document.querySelector("#link-existing-account-form").addEventListener("submit", linkExistingRiderAccount);
 document.querySelector("#create-rider-account-form").addEventListener("submit", inviteRiderAccount);
+document.querySelector("#account-rider-select").addEventListener("change",event=>{const option=event.currentTarget.selectedOptions[0];if(option?.dataset.username)document.querySelector("#account-username").value=option.dataset.username;});
 document.querySelector("#refresh-rider-accounts").addEventListener("click", loadRiderAccounts);
 document.querySelector("#connect-team-venom-gmail").addEventListener("click", connectTeamVenomGmail);
 document.querySelector("#refresh-team-venom-gmail").addEventListener("click", loadTeamVenomGmailStatus);
