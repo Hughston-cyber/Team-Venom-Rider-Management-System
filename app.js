@@ -573,19 +573,63 @@ async function showAuthenticatedWorkspace(session) {
 }
 
 const loginModeSelect=document.querySelector("#login-mode");
-function updateLoginModeFields(){const riderMode=loginModeSelect.value==="rider";document.querySelector("#login-username-field").hidden=!riderMode;document.querySelector("#login-email-field").hidden=riderMode;loginButton.innerHTML=riderMode?'Sign in to Rider Workspace <span>→</span>':'Sign in to Team Admin <span>→</span>';}
+const loginPasswordField=document.querySelector("#login-password-field");
+const loginPasswordInput=document.querySelector("#login-password");
+function updateLoginModeFields(){
+  const riderMode=loginModeSelect.value==="rider";
+  document.querySelector("#login-username-field").hidden=!riderMode;
+  document.querySelector("#login-email-field").hidden=riderMode;
+  loginPasswordField.hidden=!riderMode;
+  loginPasswordInput.required=riderMode;
+  document.querySelector("#login-hint").textContent=riderMode
+    ?"Rider usernames are not case-sensitive. Passwords are case-sensitive."
+    :"We'll email you a secure, one-time sign-in link. No administrator password is required.";
+  loginButton.innerHTML=riderMode?'Sign in to Rider Workspace <span>→</span>':'Email me a secure sign-in link <span>→</span>';
+}
 loginModeSelect.addEventListener("change",updateLoginModeFields);updateLoginModeFields();
 loginForm.addEventListener("submit",async event=>{
-  event.preventDefault();if(loginRequestInProgress)return;
-  const mode=loginModeSelect.value;const password=document.querySelector("#login-password").value;
-  const identity=mode==="rider"?document.querySelector("#login-username").value.trim().replace(/[^a-z0-9]/gi,"").toLowerCase():document.querySelector("#login-email").value.trim().toLowerCase();
-  if(!identity||!password){showMessage("Enter your username or email address and password.");return;}
+  event.preventDefault();if(loginRequestInProgress||Date.now()<loginCooldownUntil)return;
+  const mode=loginModeSelect.value;
+  const identity=mode==="rider"
+    ?document.querySelector("#login-username").value.trim().replace(/[^a-z0-9]/gi,"").toLowerCase()
+    :document.querySelector("#login-email").value.trim().toLowerCase();
+  const password=loginPasswordInput.value;
+  if(!identity||(mode==="rider"&&!password)){showMessage(mode==="rider"?"Enter your rider username and password.":"Enter your administrator email address.");return;}
   if(mode==="rider"&&!/^[a-z0-9]{3,32}$/.test(identity)){showMessage("Enter your rider username using 3–32 letters or numbers.");return;}
   if(mode==="admin"&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
-  loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent="Signing in…";showMessage("");lastLoginMode=mode;
-  try{const email=mode==="rider"?identity+"@riders.teamvenom.invalid":identity;const {error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){showMessage("Sign-in failed. Check your details and login type, then try again.");lastLoginMode=null;}}
-  catch(error){console.error("Password sign-in failed:",error);showMessage("The sign-in service is unavailable. Please try again shortly.");lastLoginMode=null;}
-  finally{loginRequestInProgress=false;loginButton.disabled=false;updateLoginModeFields();}
+  loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent=mode==="rider"?"Signing in…":"Sending secure link…";showMessage("");lastLoginMode=mode;
+  try{
+    if(mode==="rider"){
+      const {error}=await supabaseClient.auth.signInWithPassword({email:identity+"@riders.teamvenom.invalid",password});
+      if(error){showMessage("Sign-in failed. Check your rider username and password, then try again.");lastLoginMode=null;}
+    }else{
+      const {error}=await supabaseClient.auth.signInWithOtp({
+        email:identity,
+        options:{
+          shouldCreateUser:false,
+          emailRedirectTo:window.location.origin+window.location.pathname
+        }
+      });
+      if(error){
+        if(error.status===429||error.code==="over_email_send_rate_limit"){
+          applyLoginCooldown("Too many sign-in emails have been requested. Please wait before trying again.");
+        }else{
+          showMessage("We couldn't send your sign-in link. Please check the email address or try again shortly.");
+        }
+        lastLoginMode=null;
+      }else{
+        showMessage("Secure sign-in link sent. Check your inbox, then open the link on this device.",false);
+        loginButton.textContent="Link sent";
+      }
+    }
+  }catch(error){
+    console.error("Sign-in request failed:",error);
+    showMessage("The sign-in service is unavailable. Please try again shortly.");
+    lastLoginMode=null;
+  }finally{
+    loginRequestInProgress=false;
+    if(Date.now()>=loginCooldownUntil){loginButton.disabled=false;if(!(mode==="admin"&&loginMessage.textContent.startsWith("Secure sign-in link sent")))updateLoginModeFields();}
+  }
 });
 supabaseClient.auth.onAuthStateChange((event,session)=>{if(["INITIAL_SESSION","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)){setTimeout(()=>{void showAuthenticatedWorkspace(session);},0);}});
 // ROSTER MANAGEMENT
