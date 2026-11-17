@@ -579,14 +579,15 @@ function updateLoginModeFields(){
   const riderMode=loginModeSelect.value==="rider";
   document.querySelector("#login-username-field").hidden=!riderMode;
   document.querySelector("#login-email-field").hidden=riderMode;
-  loginPasswordField.hidden=!riderMode;
-  loginPasswordInput.required=riderMode;
+  loginPasswordField.hidden=false;
+  loginPasswordInput.required=true;
+  loginPasswordInput.autocomplete="current-password";
   document.querySelector("#login-hint").textContent=riderMode
     ?"Rider usernames are not case-sensitive. Passwords are case-sensitive."
-    :"We'll email you a secure, one-time sign-in link. No administrator password is required.";
+    :"Enter your registered administrator email and password.";
   loginButton.innerHTML=riderMode
     ?'Sign in to Rider Workspace <span>→</span>'
-    :'Email me a secure sign-in link <span>→</span>';
+    :'Sign in to Team Admin <span>→</span>';
 }
 loginModeSelect.addEventListener("change",updateLoginModeFields);updateLoginModeFields();
 loginForm.addEventListener("submit",async event=>{
@@ -596,7 +597,7 @@ loginForm.addEventListener("submit",async event=>{
     ?document.querySelector("#login-username").value.trim().replace(/[^a-z0-9]/gi,"").toLowerCase()
     :document.querySelector("#login-email").value.trim().toLowerCase();
   const password=loginPasswordInput.value;
-  if(!identity||(mode==="rider"&&!password)){showMessage(mode==="rider"?"Enter your rider username and password.":"Enter your administrator email address.");return;}
+  if(!identity||!password){showMessage(mode==="rider"?"Enter your rider username and password.":"Enter your administrator email and password.");return;}
   if(mode==="rider"&&!/^[a-z0-9]{3,32}$/.test(identity)){showMessage("Enter your rider username using 3–32 letters or numbers.");return;}
   if(mode==="admin"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
   loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent=mode==="rider"?"Signing in…":"Sending secure link…";showMessage("");lastLoginMode=mode;
@@ -605,22 +606,10 @@ loginForm.addEventListener("submit",async event=>{
       const {error}=await supabaseClient.auth.signInWithPassword({email:identity+"@riders.teamvenom.invalid",password});
       if(error){showMessage("Sign-in failed. Check your rider username and password, then try again.");lastLoginMode=null;}
     }else{
-      const {error}=await supabaseClient.auth.signInWithOtp({
-        email:identity,
-        options:{
-          shouldCreateUser:false,
-          emailRedirectTo:window.location.origin+window.location.pathname
-        }
-      });
+      const {error}=await supabaseClient.auth.signInWithPassword({email:identity,password});
       if(error){
-        if(error.status===429||error.code==="over_email_send_rate_limit"){
-          applyLoginCooldown("Too many sign-in emails have been requested. Please wait before trying again.");
-        }else{
-          showMessage("We couldn't send your sign-in link. Please check the email address or try again shortly.");
-        }
+        showMessage("Sign-in failed. Check your administrator email and password, then try again.");
         lastLoginMode=null;
-      }else{
-        showMessage("Secure sign-in link sent. Check your inbox, then open the link in this browser.",false);
       }
     }
   }catch(error){
