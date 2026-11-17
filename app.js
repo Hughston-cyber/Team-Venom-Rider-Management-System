@@ -2066,7 +2066,7 @@ async function inviteRiderAccount(event) {
     const {data,error}=await supabaseClient.functions.invoke("rider-account-management",{body:{action:"set_credentials",rider_id:form.elements.rider_id.value,username:form.elements.username.value,password:form.elements.password.value,contact_email:form.elements.contact_email.value.trim(),is_administrator:form.elements.is_administrator.checked}});
     if(error||data?.error)throw new Error(data?.error||error?.message||"The rider login could not be saved.");
     form.reset();
-    setModuleMessage("#account-management-message",data.message+" Username: "+data.username+". Keep the password available to share securely with the account holder.");
+    setModuleMessage("#account-management-message",data.preserved_existing_admin_login ? data.message : data.message+" Username: "+data.username+". Keep the password available to share securely with the account holder.");
     await loadRiderAccounts();
   } catch(error) {setModuleMessage("#account-management-message",error?.message||"The rider login could not be saved.",true);}
   finally {button.disabled=false;button.textContent="Create / update rider login";}
