@@ -55,6 +55,7 @@ const pageCopy = {
   "roster-versions": ["Roster versions.", "Manage draft and published roster versions without overwriting existing schedules."],
   "race-day": ["Race-day control.", "Monitor live rider handovers and the 24-hour race clock."],
   performance: ["Performance centre.", "Review rider participation and team performance statistics."],
+  "changeover-log": ["Changeover log.", "Review the recorded rider handovers, stint times and race-clock differences."],
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
   settings: ["System settings.", "Review account access and notification preferences."],
   accounts: ["Account management.", "Invite riders and manage their Team Venom login access."]
@@ -89,7 +90,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","notifications","accounts","settings"];
+  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","changeover-log","notifications","accounts","settings"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -103,6 +104,7 @@ function selectView(view) {
   if (view === "roster-versions") loadRosters();
   if (view === "race-day") loadRaceDay();
   if (view === "performance") loadPerformance();
+  if (view === "changeover-log") { void loadRaceDay(); void loadChangeoverLog(); }
   if (view === "notifications") loadNotifications();
   if (view === "accounts") { loadRiderAccounts(); loadTeamVenomGmailStatus(); }
   if (view === "settings") loadSettings();
@@ -110,6 +112,7 @@ function selectView(view) {
 document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
 });
+document.querySelector("#refresh-changeover-log")?.addEventListener("click", () => loadChangeoverLog());
 document.querySelector("#menu-toggle").addEventListener("click", () => {
   document.querySelector("#sidebar").classList.toggle("open");
 });
