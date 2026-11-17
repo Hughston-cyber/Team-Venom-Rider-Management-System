@@ -604,26 +604,23 @@ loginForm.addEventListener("submit", async event => {
 
   let cooldownApplied = false;
   try {
-    const { error } = await supabaseClient.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: "https://hughston-cyber.github.io/Team-Venom-Rider-Management-System/"
-      }
+    const { data, error } = await supabaseClient.functions.invoke("send-login-link", {
+      body: { email }
     });
 
-    if (error) {
-      const isRateLimited = error.status === 429 || error.code === "over_email_send_rate_limit";
+    if (error || data?.error) {
+      const status = error?.context?.status ?? error?.status;
+      const isRateLimited = status === 429 || /wait before requesting/i.test(data?.error || error?.message || "");
       if (isRateLimited) {
         cooldownApplied = true;
-        applyLoginCooldown("Too many sign-in emails have been requested. Supabase is temporarily limiting email delivery. Please wait about a minute before trying again.");
+        applyLoginCooldown("Please wait before requesting another sign-in email. Team Venom protects sign-in emails from repeated requests.");
       } else {
-        showMessage("We couldn't send the sign-in email. Please check your connection and try again shortly.");
+        showMessage(data?.error || "We couldn't send the sign-in email. Please check your connection and try again shortly.");
       }
     } else {
       cooldownApplied = true;
-      applyLoginCooldown("If this email is linked to an authorised Team Venom account, a one-time sign-in link has been sent. Check your inbox and spam folder. Use the newest link only once.");
-      showMessage("If this email is linked to an authorised Team Venom account, a one-time sign-in link has been sent. Check your inbox and spam folder. Use the newest link only once.", false);
+      applyLoginCooldown("If this email is linked to an active Team Venom account, a one-time sign-in link has been sent from Team Venom Gmail. Check your inbox and spam folder. Use the newest link only once.");
+      showMessage("If this email is linked to an active Team Venom account, a one-time sign-in link has been sent from Team Venom Gmail. Check your inbox and spam folder. Use the newest link only once.", false);
     }
   } catch (error) {
     console.error("Sign-in email request failed:", error);
