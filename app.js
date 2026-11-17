@@ -575,26 +575,18 @@ async function showAuthenticatedWorkspace(session) {
 const loginModeSelect=document.querySelector("#login-mode");
 const loginPasswordField=document.querySelector("#login-password-field");
 const loginPasswordInput=document.querySelector("#login-password");
-const loginOtpField=document.querySelector("#login-otp-field");
-const loginOtpInput=document.querySelector("#login-otp");
-let adminOtpPending=false;
-let adminOtpEmail="";
 function updateLoginModeFields(){
   const riderMode=loginModeSelect.value==="rider";
   document.querySelector("#login-username-field").hidden=!riderMode;
   document.querySelector("#login-email-field").hidden=riderMode;
   loginPasswordField.hidden=!riderMode;
   loginPasswordInput.required=riderMode;
-  loginOtpField.hidden=riderMode||!adminOtpPending;
-  loginOtpInput.required=!riderMode&&adminOtpPending;
   document.querySelector("#login-hint").textContent=riderMode
     ?"Rider usernames are not case-sensitive. Passwords are case-sensitive."
-    :adminOtpPending
-      ?"Enter the six-digit code from your email. The code can only be used once."
-      :"We'll email you a six-digit, one-time sign-in code. No administrator password is required.";
+    :"We'll email you a secure, one-time sign-in link. No administrator password is required.";
   loginButton.innerHTML=riderMode
     ?'Sign in to Rider Workspace <span>→</span>'
-    :adminOtpPending?'Verify sign-in code <span>→</span>':'Email me a sign-in code <span>→</span>';
+    :'Email me a secure sign-in link <span>→</span>';
 }
 loginModeSelect.addEventListener("change",updateLoginModeFields);updateLoginModeFields();
 loginForm.addEventListener("submit",async event=>{
@@ -604,42 +596,31 @@ loginForm.addEventListener("submit",async event=>{
     ?document.querySelector("#login-username").value.trim().replace(/[^a-z0-9]/gi,"").toLowerCase()
     :document.querySelector("#login-email").value.trim().toLowerCase();
   const password=loginPasswordInput.value;
-  const otp=loginOtpInput.value.trim();
   if(!identity||(mode==="rider"&&!password)){showMessage(mode==="rider"?"Enter your rider username and password.":"Enter your administrator email address.");return;}
   if(mode==="rider"&&!/^[a-z0-9]{3,32}$/.test(identity)){showMessage("Enter your rider username using 3–32 letters or numbers.");return;}
   if(mode==="admin"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
-  if(mode==="admin"&&adminOtpPending&&identity!==adminOtpEmail){adminOtpPending=false;adminOtpEmail="";loginOtpInput.value="";updateLoginModeFields();showMessage("The email address changed. Request a new sign-in code.");return;}
-  if(mode==="admin"&&adminOtpPending&&!/^\d{6}$/.test(otp)){showMessage("Enter the six-digit code from your email.");return;}
-  loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent=mode==="rider"?"Signing in…":adminOtpPending?"Verifying code…":"Sending code…";showMessage("");lastLoginMode=mode;
+  loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent=mode==="rider"?"Signing in…":"Sending secure link…";showMessage("");lastLoginMode=mode;
   try{
     if(mode==="rider"){
       const {error}=await supabaseClient.auth.signInWithPassword({email:identity+"@riders.teamvenom.invalid",password});
       if(error){showMessage("Sign-in failed. Check your rider username and password, then try again.");lastLoginMode=null;}
-    }else if(adminOtpPending){
-      const {data,error}=await supabaseClient.auth.verifyOtp({email:adminOtpEmail,token:otp,type:"email"});
-      if(error){
-        showMessage("That code could not be verified. Check the six digits and try again.");
-        lastLoginMode=null;
-      }else{
-        adminOtpPending=false;adminOtpEmail="";loginOtpInput.value="";
-        showMessage("Code verified. Opening Team Admin…",false);
-        if(data.session)await showAuthenticatedWorkspace(data.session);
-      }
     }else{
       const {error}=await supabaseClient.auth.signInWithOtp({
         email:identity,
-        options:{shouldCreateUser:false}
+        options:{
+          shouldCreateUser:false,
+          emailRedirectTo:window.location.origin+window.location.pathname
+        }
       });
       if(error){
         if(error.status===429||error.code==="over_email_send_rate_limit"){
           applyLoginCooldown("Too many sign-in emails have been requested. Please wait before trying again.");
         }else{
-          showMessage("We couldn't send your sign-in code. Please check the email address or try again shortly.");
+          showMessage("We couldn't send your sign-in link. Please check the email address or try again shortly.");
         }
         lastLoginMode=null;
       }else{
-        adminOtpPending=true;adminOtpEmail=identity;loginOtpInput.value="";updateLoginModeFields();
-        showMessage("Six-digit sign-in code sent. Check your inbox and enter it below.",false);
+        showMessage("Secure sign-in link sent. Check your inbox, then open the link in this browser.",false);
       }
     }
   }catch(error){
