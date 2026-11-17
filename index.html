@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261117-9">
+  <link rel="stylesheet" href="styles.css?v=20261117-10">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261117-9" defer></script>
+  <script src="app.js?v=20261117-10" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -44,19 +44,19 @@
       </a>
       <div class="workspace-label">WORKSPACE</div>
       <nav class="nav" aria-label="Main navigation">
-        <button class="nav-link active" data-view="rider-workspace" data-role="rider" hidden><span>♙</span> Rider workspace</button>
-        <button class="nav-link active" data-view="overview" data-role="staff"><span>◉</span> Race Control</button>
-        <button class="nav-link" data-view="riders" data-role="staff"><span>♙</span> Riders</button>
-        <button class="nav-link" data-view="rosters" data-role="staff"><span>▤</span> Rosters</button>
-        <button class="nav-link" data-view="roster-versions" data-role="staff"><span>▧</span> Roster versions</button>
-        <button class="nav-link" data-view="performance" data-role="staff"><span>↗</span> Performance</button>
-<button class="nav-link" data-view="changeover-log" data-role="staff"><span>↔</span> Changeover log</button>
-        <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
-        <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><span>♙</span> Account management</button>
+        <button class="nav-link active" data-view="rider-workspace" data-role="rider" hidden><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg> Rider workspace</button>
+        <button class="nav-link active" data-view="overview" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></svg> Race Control</button>
+        <button class="nav-link" data-view="riders" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg> Riders</button>
+        <button class="nav-link" data-view="rosters" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg> Rosters</button>
+        <button class="nav-link" data-view="roster-versions" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="13" height="15" rx="2"/><path d="M4 16V4a1 1 0 0 1 1-1h11"/></svg> Roster versions</button>
+        <button class="nav-link" data-view="performance" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg> Performance</button>
+<button class="nav-link" data-view="changeover-log" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg> Changeover log</button>
+        <button class="nav-link" data-view="notifications"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></svg> Notifications</button>
+        <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg> Account management</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="system-status"><span class="status-dot"></span><span><strong>System workspace</strong><small>Beta release</small></span></div>
-        <button class="nav-link" data-view="settings"><span>⚙</span> Settings</button>
+        <button class="nav-link" data-view="settings"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9 7 7m10 10 2.1 2.1M2 12h3m14 0h3M4.9 19.1 7 17m10-10 2.1-2.1"/></svg> Settings</button>
       </div>
     </aside>
 
@@ -110,10 +110,10 @@
           <section class="race-control-quick-section">
             <div class="section-heading"><div><p class="eyebrow">COMMAND SHORTCUTS</p><h2>Operations desk</h2></div><span class="muted">Quick access</span></div>
             <div class="race-control-quick-grid">
-              <button class="race-control-quick-card" type="button" data-view="rosters"><span>▤</span><strong>Roster management</strong><small>Review schedules and stint allocations</small><b>→</b></button>
-              <button class="race-control-quick-card" type="button" data-view="riders"><span>♙</span><strong>Rider directory</strong><small>Open rider profiles and team records</small><b>→</b></button>
-              <button class="race-control-quick-card" type="button" data-view="notifications"><span>◉</span><strong>Team notifications</strong><small>Announcements and operational alerts</small><b>→</b></button>
-              <button class="race-control-quick-card" type="button" data-view="performance"><span>↗</span><strong>Performance centre</strong><small>Recorded laps and rider statistics</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="rosters"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><strong>Roster management</strong><small>Review schedules and stint allocations</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="riders"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg><strong>Rider directory</strong><small>Open rider profiles and team records</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="notifications"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></svg><strong>Team notifications</strong><small>Announcements and operational alerts</small><b>→</b></button>
+              <button class="race-control-quick-card" type="button" data-view="performance"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg><strong>Performance centre</strong><small>Recorded laps and rider statistics</small><b>→</b></button>
             </div>
           </section>
           <footer>TEAM VENOM <span>•</span> RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
