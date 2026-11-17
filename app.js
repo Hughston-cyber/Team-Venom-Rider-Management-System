@@ -49,7 +49,7 @@ const breadcrumb = document.querySelector("#breadcrumb-current");
 
 const pageCopy = {
   "rider-workspace": ["Rider workspace.", "Your personal Team Venom rider information and upcoming rostered stints."],
-  overview: ["Operations overview.", "Your central workspace for riders, rosters and race-day operations."],
+  overview: ["Race Control.", "Your live command centre for race-day operations, rider handovers and team coordination."],
   riders: ["Rider directory.", "Manage rider profiles, contact records and eligibility."],
   rosters: ["Roster management.", "Build, review and publish race rosters and stint allocations."],
   "roster-versions": ["Roster versions.", "Manage draft and published roster versions without overwriting existing schedules."],
@@ -74,6 +74,7 @@ function showMessage(message, isError = true) {
 }
 
 function selectView(view) {
+  if (view === "race-day") view = "overview";
   if (view === "accounts" && !isAdministrator()) view = "overview";
   if (currentRoles.includes("member") && !currentRoles.some(role => ["administrator", "manager"].includes(role))) {
     const memberViews = ["rider-workspace", "race-day", "notifications", "settings"];
@@ -88,7 +89,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["rider-workspace","overview","riders","rosters","roster-versions","race-day","performance","notifications","accounts","settings"];
+  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","notifications","accounts","settings"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -96,7 +97,7 @@ function selectView(view) {
   document.querySelector("#rider-profile-content").hidden = true;
   document.querySelector("#sidebar").classList.remove("open");
   if (view === "rider-workspace") loadRiderWorkspace();
-  if (view === "overview") loadOverview();
+  if (view === "overview") loadRaceDay();
   if (view === "riders") loadRiders();
   if (view === "rosters") loadRosters();
   if (view === "roster-versions") loadRosters();
@@ -1738,6 +1739,14 @@ function renderLiveRaceDisplay() {
     if (candidateIndex >= 0) { chosenEventId = eventId; chosenStints = stints; break; }
   }
   liveSelectedEventId = chosenEventId;
+  const eventChip = document.querySelector("#race-control-event");
+  const eventStatus = document.querySelector("#race-control-event-status");
+  const selectedStint = chosenStints[0];
+  const eventName = selectedStint?.rosters?.race_events?.event_name || "NO ACTIVE EVENT";
+  if (eventChip) eventChip.textContent = eventName.toUpperCase();
+  if (eventStatus) eventStatus.textContent = chosenEventId ? "LIVE EVENT CONNECTED · ROSTER SYNC ACTIVE" : "NO PUBLISHED EVENT FOUND · WAITING FOR ROSTER";
+  const updated = document.querySelector("#overview-updated");
+  if (updated) updated.textContent = "SYNCED " + new Date().toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   const raceClockState = liveRaceStateByEvent[liveSelectedEventId];
   const countdown = document.querySelector("#race-countdown");
   const raceClockStatus = document.querySelector("#race-clock-status");
