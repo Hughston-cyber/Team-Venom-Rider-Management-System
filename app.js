@@ -583,7 +583,7 @@ function updateLoginModeFields(){
   loginPasswordInput.required=true;
   loginPasswordInput.autocomplete="current-password";
   document.querySelector("#login-hint").textContent=riderMode
-    ?"Rider usernames are not case-sensitive. Passwords are case-sensitive."
+    ?"Rider usernames are not case-sensitive. Passwords are case-sensitive. Administrator-enabled accounts open the staff workspace."
     :"Enter your registered administrator email and password.";
   loginButton.innerHTML=riderMode
     ?'Sign in to Rider Workspace <span>→</span>'
