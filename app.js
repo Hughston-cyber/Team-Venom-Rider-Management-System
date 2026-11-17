@@ -500,8 +500,38 @@ document.querySelector("#rider-form").addEventListener("submit", async event => 
   await loadRiders();
 });
 
+let authRenderVersion = 0;
+let loginRequestInProgress = false;
+let loginCooldownUntil = 0;
+let loginCooldownTimer = null;
+
+function restoreLoginButton() {
+  if (loginCooldownTimer) {
+    clearTimeout(loginCooldownTimer);
+    loginCooldownTimer = null;
+  }
+  loginButton.disabled = false;
+  loginButton.innerHTML = 'Email sign-in link <span>→</span>';
+}
+
+function applyLoginCooldown(message) {
+  loginCooldownUntil = Date.now() + 60_000;
+  loginButton.disabled = true;
+  loginButton.textContent = "Please wait before retrying…";
+  showMessage(message, true);
+  if (loginCooldownTimer) clearTimeout(loginCooldownTimer);
+  loginCooldownTimer = setTimeout(() => {
+    loginCooldownTimer = null;
+    if (!loginRequestInProgress) restoreLoginButton();
+  }, 60_000);
+}
+
 async function showAuthenticatedWorkspace(session) {
+  const renderVersion = ++authRenderVersion;
   if (!session?.user) {
+    currentProfile = null;
+    currentUser = null;
+    currentRoles = [];
     appShell.hidden = true;
     authScreen.hidden = false;
     loginForm.hidden = false;
@@ -514,24 +544,29 @@ async function showAuthenticatedWorkspace(session) {
     supabaseClient.from("member_roles").select("role").eq("user_id", userId)
   ]);
 
+  // Ignore stale requests if another auth event arrived while these checks were running.
+  if (renderVersion !== authRenderVersion) return;
+
   if (profileResult.error || roleResult.error) {
     appShell.hidden = true;
     authScreen.hidden = false;
-    showMessage("We couldn't verify your team access. Please contact an administrator.");
+    showMessage("We couldn't verify your team access. Please refresh and try again. If the problem continues, contact an administrator.");
     return;
   }
 
   const profile = profileResult.data;
-  currentProfile = profile;
-  currentUser = session.user;
-  currentRoles = (roleResult.data || []).map(item => item.role);
-  if (!profile || profile.status !== "active" || currentRoles.length === 0) {
-    await supabaseClient.auth.signOut();
+  const roles = (roleResult.data || []).map(item => item.role);
+  if (!profile || profile.status !== "active" || roles.length === 0) {
     appShell.hidden = true;
     authScreen.hidden = false;
     showMessage("Your account is not yet authorised. Please contact a Team Venom administrator.");
+    await supabaseClient.auth.signOut();
     return;
   }
+
+  currentProfile = profile;
+  currentUser = session.user;
+  currentRoles = roles;
 
   document.querySelector("#account-name").textContent = profile.display_name || "Team member";
   document.querySelector("#account-role").textContent = currentRoles[0].toUpperCase();
@@ -548,38 +583,64 @@ async function showAuthenticatedWorkspace(session) {
 
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
+  if (loginRequestInProgress) return;
+
+  const remaining = loginCooldownUntil - Date.now();
+  if (remaining > 0) {
+    showMessage("Please wait a little longer before requesting another sign-in email.");
+    return;
+  }
+
+  const email = document.querySelector("#login-email").value.trim().toLowerCase();
+  if (!email) {
+    showMessage("Enter your registered email address.");
+    return;
+  }
+
+  loginRequestInProgress = true;
   loginButton.disabled = true;
   loginButton.textContent = "Sending link…";
   showMessage("");
-  const email = document.querySelector("#login-email").value.trim().toLowerCase();
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: "https://hughston-cyber.github.io/Team-Venom-Rider-Management-System/"
+
+  let cooldownApplied = false;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: "https://hughston-cyber.github.io/Team-Venom-Rider-Management-System/"
+      }
+    });
+
+    if (error) {
+      const isRateLimited = error.status === 429 || error.code === "over_email_send_rate_limit";
+      if (isRateLimited) {
+        cooldownApplied = true;
+        applyLoginCooldown("Too many sign-in emails have been requested. Supabase is temporarily limiting email delivery. Please wait about a minute before trying again.");
+      } else {
+        showMessage("We couldn't send the sign-in email. Please check your connection and try again shortly.");
+      }
+    } else {
+      cooldownApplied = true;
+      applyLoginCooldown("If this email is linked to an authorised Team Venom account, a one-time sign-in link has been sent. Check your inbox and spam folder. Use the newest link only once.");
+      showMessage("If this email is linked to an authorised Team Venom account, a one-time sign-in link has been sent. Check your inbox and spam folder. Use the newest link only once.", false);
     }
-  });
-  if (error) {
-    showMessage("We couldn't send a sign-in link. Please check the address and try again shortly.");
-  } else {
-    showMessage("If this email is linked to an active Team Venom account, a sign-in link has been sent. Check your inbox and spam folder.", false);
+  } catch (error) {
+    console.error("Sign-in email request failed:", error);
+    showMessage("We couldn't contact the sign-in service. Check your internet connection and try again.");
+  } finally {
+    loginRequestInProgress = false;
+    if (!cooldownApplied) restoreLoginButton();
   }
-  loginButton.disabled = false;
-  loginButton.innerHTML = 'Email sign-in link <span>→</span>';
 });
 
-supabaseClient.auth.onAuthStateChange((_event, session) => {
-  setTimeout(() => showAuthenticatedWorkspace(session), 0);
-});
-
-supabaseClient.auth.getSession().then(({ data, error }) => {
-  if (error) {
-    showMessage("Unable to check your session. Please refresh and try again.");
-    return;
+// INITIAL_SESSION is emitted by Supabase when the client restores its stored session.
+// Use one auth event listener instead of racing it against a separate getSession() call.
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) {
+    setTimeout(() => { void showAuthenticatedWorkspace(session); }, 0);
   }
-  showAuthenticatedWorkspace(data.session);
 });
-
 
 // ROSTER MANAGEMENT
 let rosterEvents = [];
