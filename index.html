@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261117-5">
+  <link rel="stylesheet" href="styles.css?v=20261117-6">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261117-5" defer></script>
+  <script src="app.js?v=20261117-6" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -105,6 +105,10 @@
               <div class="live-admin-controls"><button class="text-button live-undo-button" id="undo-rider-changeover-button" type="button" disabled>↶ UNDO CHANGEOVER</button><button class="text-button live-restart-button" id="restart-live-roster-button" type="button" disabled>↻ RESTART ROSTER</button></div>
               <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
             </article>
+          </section>
+          <section class="changeover-log-section panel" aria-label="Race changeover log">
+            <div class="changeover-log-title"><div><p class="eyebrow">RACE RECORD</p><h2>Changeover log</h2><p class="muted">Every confirmed handover, recorded against local time and the 24-hour race clock.</p></div><span class="changeover-log-count" id="changeover-log-count">0 RECORDED</span></div>
+            <div class="changeover-log-list" id="changeover-log-list"><p class="changeover-log-empty">Loading changeover history…</p></div>
           </section>
           <section class="race-control-quick-section">
             <div class="section-heading"><div><p class="eyebrow">COMMAND SHORTCUTS</p><h2>Operations desk</h2></div><span class="muted">Quick access</span></div>
