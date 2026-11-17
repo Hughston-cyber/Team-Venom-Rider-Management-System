@@ -596,7 +596,7 @@ loginForm.addEventListener("submit",async event=>{
   const password=loginPasswordInput.value;
   if(!identity||(mode==="rider"&&!password)){showMessage(mode==="rider"?"Enter your rider username and password.":"Enter your administrator email address.");return;}
   if(mode==="rider"&&!/^[a-z0-9]{3,32}$/.test(identity)){showMessage("Enter your rider username using 3–32 letters or numbers.");return;}
-  if(mode==="admin"&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
+  if(mode==="admin"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity)){showMessage("Enter a valid administrator email address.");return;}
   loginRequestInProgress=true;loginButton.disabled=true;loginButton.textContent=mode==="rider"?"Signing in…":"Sending secure link…";showMessage("");lastLoginMode=mode;
   try{
     if(mode==="rider"){
