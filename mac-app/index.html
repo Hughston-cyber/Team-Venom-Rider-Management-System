@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none';">
+  <title>Team Venom Offline</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="renderer.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="mark">V</span><div><strong>TEAM <em>VENOM</em></strong><small>RIDER OPERATIONS</small></div></div>
+    <div class="nav-label">OFFLINE WORKSPACE</div>
+    <div class="nav-item active">◉ &nbsp; Race Control</div>
+    <div class="sidebar-bottom"><span class="dot"></span><div><strong>LOCAL MODE</strong><small>Data stored on this Mac</small></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb">TEAM VENOM <span>/</span> <b>RACE CONTROL</b></div>
+      <div class="top-right"><span class="offline-pill">● OFFLINE EDITION</span><span id="local-clock">--:--:--</span></div>
+    </header>
+    <section class="content">
+      <div class="heading">
+        <div><p class="eyebrow">TEAM VENOM / LOCAL OPERATIONS</p><h1>Race Control<span>.</span></h1><p class="muted">Standalone Mac command centre. Works without an internet connection.</p></div>
+        <div class="actions"><button class="secondary" id="import-button">Import backup</button><button class="secondary" id="export-button">Export backup</button></div>
+      </div>
+      <div class="notice"><b>LOCAL DATA</b><span>This edition stores its roster and race activity on this Mac. It does not currently connect to the live Team Venom server or send team notifications.</span></div>
+      <div class="event-row"><label for="event-name">EVENT NAME</label><input id="event-name" maxlength="100" placeholder="e.g. Maryborough 24 Hour"></div>
+      <section class="live-grid">
+        <article class="panel rider-panel"><p class="eyebrow">CURRENTLY RIDING</p><div class="avatar" id="current-avatar">—</div><h2 id="current-rider">No rider selected</h2><p class="muted" id="current-position">Add riders to your roster</p></article>
+        <article class="panel clock-panel"><p class="eyebrow">LOCAL EVENT TIME</p><time id="event-time">--:--:--</time><p class="muted">CURRENT TIME</p><button class="primary changeover" id="changeover-button" disabled>RIDER CHANGEOVER →</button><p class="status" id="changeover-status">Set up a roster to begin.</p></article>
+        <article class="panel rider-panel"><p class="eyebrow">NEXT RIDING</p><div class="avatar next" id="next-avatar">—</div><h2 id="next-rider">No next rider</h2><p class="muted" id="next-position">Waiting for roster</p></article>
+      </section>
+      <section class="lower-grid">
+        <article class="panel timer-panel">
+          <div class="panel-head"><div><p class="eyebrow">24-HOUR EVENT TIMER</p><h2>Race clock</h2></div><span class="state" id="timer-state">READY</span></div>
+          <time id="countdown">24:00:00</time><p class="muted" id="timer-message">The race clock is ready to start.</p>
+          <div class="button-row"><button class="primary" id="start-timer">START RACE CLOCK</button><button class="secondary" id="stop-timer" disabled>STOP</button><button class="secondary" id="reset-timer">RESTART</button></div>
+        </article>
+        <article class="panel roster-panel">
+          <div class="panel-head"><div><p class="eyebrow">LOCAL ROSTER</p><h2>Rider order</h2></div><span class="state" id="rider-count">0 RIDERS</span></div>
+          <form id="add-rider-form" class="add-form"><input id="new-rider" maxlength="70" placeholder="Rider full name" aria-label="Rider full name" required><button class="primary" type="submit">ADD RIDER</button></form>
+          <ol id="roster-list" class="roster-list"></ol>
+        </article>
+      </section>
+      <section class="panel activity-panel"><div class="panel-head"><div><p class="eyebrow">LOCAL ACTIVITY</p><h2>Pending activity log</h2></div><span class="state" id="pending-count">0 PENDING</span></div><p class="muted small">Changeovers are recorded locally and included in your backup file. They are not uploaded automatically.</p><div id="activity-list" class="activity-list"><p class="muted">No activity recorded yet.</p></div></section>
+      <footer>TEAM VENOM <span>•</span> OFFLINE RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+    </section>
+  </main>
+</body>
+</html>
