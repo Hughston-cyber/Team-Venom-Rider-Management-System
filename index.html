@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261117-7">
+  <link rel="stylesheet" href="styles.css?v=20261117-8">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261117-7" defer></script>
+  <script src="app.js?v=20261117-8" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -50,6 +50,7 @@
         <button class="nav-link" data-view="rosters" data-role="staff"><span>▤</span> Rosters</button>
         <button class="nav-link" data-view="roster-versions" data-role="staff"><span>▧</span> Roster versions</button>
         <button class="nav-link" data-view="performance" data-role="staff"><span>↗</span> Performance</button>
+<button class="nav-link" data-view="changeover-log" data-role="staff"><span>↔</span> Changeover log</button>
         <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
         <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><span>♙</span> Account management</button>
       </nav>
@@ -106,10 +107,6 @@
               <p class="inline-message changeover-status" id="changeover-status" role="status">Changeovers sync to all connected devices.</p>
             </article>
           </section>
-          <section class="changeover-log-section panel" aria-label="Race changeover log">
-            <div class="changeover-log-title"><div><p class="eyebrow">RACE RECORD</p><h2>Changeover log</h2><p class="muted">Every confirmed handover, recorded against local time and the 24-hour race clock.</p></div><span class="changeover-log-count" id="changeover-log-count">0 RECORDED</span></div>
-            <div class="changeover-log-list" id="changeover-log-list"><p class="changeover-log-empty">Loading changeover history…</p></div>
-          </section>
           <section class="race-control-quick-section">
             <div class="section-heading"><div><p class="eyebrow">COMMAND SHORTCUTS</p><h2>Operations desk</h2></div><span class="muted">Quick access</span></div>
             <div class="race-control-quick-grid">
@@ -120,6 +117,13 @@
             </div>
           </section>
           <footer>TEAM VENOM <span>•</span> RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+        </div>
+        <div id="changeover-log-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / RACE RECORD</p><h1>Changeover log<span>.</span></h1><p class="subheading">A permanent record of confirmed rider handovers, stint durations and race-clock times.</p></div><div class="heading-actions"><button class="text-button" id="refresh-changeover-log" type="button">↻ Refresh log</button></div></div>
+          <section class="changeover-log-section panel" aria-label="Race changeover log">
+            <div class="changeover-log-title"><div><p class="eyebrow">RACE RECORD</p><h2>Recorded handovers</h2><p class="muted">Times are recorded automatically when a rider changeover is confirmed.</p></div><span class="changeover-log-count" id="changeover-log-count">0 RECORDED</span></div>
+            <div class="changeover-log-list" id="changeover-log-list"><p class="changeover-log-empty">Select an event to load its changeover history.</p></div>
+          </section>
         </div>
         <div id="rider-workspace-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM VENOM / RIDER ACCESS</p><h1>Your rider workspace<span>.</span></h1><p class="subheading">Your profile and published upcoming stints, all in one place.</p></div><div class="heading-actions"><button class="text-button" type="button" data-view="race-day">Open race-day monitor</button></div></div>
