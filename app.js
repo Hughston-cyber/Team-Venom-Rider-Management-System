@@ -115,6 +115,7 @@ document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
 });
 document.querySelector("#refresh-changeover-log")?.addEventListener("click", () => loadChangeoverLog());
+document.querySelector("#export-changeover-log")?.addEventListener("click", () => { void exportChangeoverLogToExcel(); });
 document.querySelector("#clear-changeover-log")?.addEventListener("click", async () => {
   if (!canManageRiders() || !liveSelectedEventId) return;
   const confirmed = window.confirm("Clear every changeover log for this event? This permanently deletes the test records and cannot be undone.");
@@ -2104,6 +2105,75 @@ async function restartLiveRoster() {
   renderLiveRaceDisplay();
 }
 function formatRaceDuration(totalSeconds) { const v=Math.max(0,Math.floor(Number(totalSeconds)||0)); return [Math.floor(v/3600),Math.floor((v%3600)/60),v%60].map(x=>String(x).padStart(2,'0')).join(':'); }
+async function exportChangeoverLogToExcel() {
+  if (!liveSelectedEventId) {
+    window.alert("Select a race event before exporting its changeover log.");
+    return;
+  }
+  if (!window.XLSX) {
+    window.alert("The Excel export library could not load. Check your internet connection and try again.");
+    return;
+  }
+  const button = document.querySelector("#export-changeover-log");
+  const originalLabel = button?.textContent || "Export to Excel";
+  if (button) { button.disabled = true; button.textContent = "Preparing workbook…"; }
+  try {
+    const pageSize = 1000;
+    let allRows = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const result = await supabaseClient
+        .from("race_changeovers")
+        .select("id,event_id,from_roster_stint_id,to_roster_stint_id,changeover_at,race_elapsed_seconds,actual_stint_seconds,scheduled_stint_seconds,variance_seconds")
+        .eq("event_id", liveSelectedEventId)
+        .order("changeover_at", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (result.error) throw result.error;
+      const page = result.data || [];
+      allRows = allRows.concat(page);
+      if (page.length < pageSize) break;
+    }
+
+    const eventStint = raceDayRosterStints.find(stint => stint.rosters?.event_id === liveSelectedEventId);
+    const eventName = eventStint?.rosters?.race_events?.event_name || "Team Venom race";
+    const rosterById = new Map(raceDayRosterStints.map(stint => [stint.id, stint]));
+    const workbookRows = allRows.map(row => {
+      const from = rosterById.get(row.from_roster_stint_id);
+      const to = rosterById.get(row.to_roster_stint_id);
+      const variance = Number(row.variance_seconds) || 0;
+      return {
+        "Local changeover date and time": row.changeover_at ? new Date(row.changeover_at).toLocaleString("en-AU") : "",
+        "Race elapsed time": formatRaceDuration(row.race_elapsed_seconds),
+        "Rider handing over": from ? liveRiderName(from) : "Previous rider",
+        "Rider taking over": to ? liveRiderName(to) : "Next rider",
+        "Actual stint duration": formatRaceDuration(row.actual_stint_seconds),
+        "Scheduled stint duration": formatRaceDuration(row.scheduled_stint_seconds),
+        "Variance": variance > 0 ? "+" + formatRaceDuration(variance) : variance < 0 ? "−" + formatRaceDuration(Math.abs(variance)) : "00:00:00",
+        "Variance status": variance > 0 ? "Over schedule" : variance < 0 ? "Early" : "On time"
+      };
+    });
+
+    const sheet = XLSX.utils.json_to_sheet(workbookRows, {
+      header: ["Local changeover date and time","Race elapsed time","Rider handing over","Rider taking over","Actual stint duration","Scheduled stint duration","Variance","Variance status"]
+    });
+    sheet["!cols"] = [{wch:25},{wch:19},{wch:25},{wch:25},{wch:22},{wch:25},{wch:17},{wch:18}];
+    sheet["!autofilter"] = { ref: sheet["!ref"] || "A1:H1" };
+    sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Changeovers");
+    const safeName = eventName.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "race";
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `team-venom-${safeName}-changeovers-${dateStamp}.xlsx`);
+    if (button) button.textContent = "Exported";
+    window.setTimeout(() => { if (button) button.textContent = originalLabel; }, 1800);
+  } catch (error) {
+    console.error("Changeover Excel export failed:", error);
+    window.alert("The changeover log could not be exported: " + (error.message || "Unknown error"));
+    if (button) button.textContent = originalLabel;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 function renderChangeoverLog() {
  const list=document.querySelector('#changeover-log-list'), count=document.querySelector('#changeover-log-count'); if(!list)return; list.replaceChildren();
  const rows=raceChangeoverLog.filter(row=>row.event_id===liveSelectedEventId); if(count)count.textContent=rows.length+' RECORDED';
