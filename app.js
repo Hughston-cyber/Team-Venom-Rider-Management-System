@@ -2169,11 +2169,20 @@ async function refreshPushDeviceControl() {
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
+    const { data: preference, error } = await supabaseClient
+      .from("notification_preferences").select("enabled")
+      .eq("user_id", currentUser.id).eq("channel", "push").maybeSingle();
+    if (error) throw error;
+    const pushEnabled = preference?.enabled === true;
     button.disabled = false;
     if (testButton) testButton.disabled = !subscription;
-    button.textContent = subscription ? "Disable push on this device" : "Enable push on this device";
+    button.textContent = subscription
+      ? (pushEnabled ? "Disable push on this device" : "Enable push delivery on this device")
+      : "Enable push on this device";
     status.textContent = subscription
-      ? "This device is registered for Team Venom push notifications."
+      ? (pushEnabled
+          ? "This device is registered and push delivery is enabled for your account."
+          : "This device is registered, but push delivery is switched off. Enable it here to receive alerts.")
       : "Push notifications have not been enabled on this device.";
   } catch (error) {
     button.disabled = true;
@@ -2207,14 +2216,26 @@ async function togglePushDevice() {
   try {
     const registration = await navigator.serviceWorker.ready;
     const existing = await registration.pushManager.getSubscription();
-    if (existing) {
+    const { data: preference, error: preferenceError } = await supabaseClient
+      .from("notification_preferences").select("enabled")
+      .eq("user_id", currentUser.id).eq("channel", "push").maybeSingle();
+    if (preferenceError) throw preferenceError;
+    const pushEnabled = preference?.enabled === true;
+    if (existing && pushEnabled) {
       const { error } = await supabaseClient.functions.invoke("push-notifications", {
         body: { action: "unsubscribe", endpoint: existing.endpoint }
       });
       if (error) throw error;
       await existing.unsubscribe();
       document.querySelector("#notification-preferences-form").elements.push.checked = false;
-      status.textContent = "Push notifications have been disabled on this device.";
+      status.textContent = "Push delivery has been disabled on this device.";
+    } else if (existing) {
+      const { error } = await supabaseClient.functions.invoke("push-notifications", {
+        body: { action: "subscribe", subscription: existing.toJSON() }
+      });
+      if (error) throw error;
+      document.querySelector("#notification-preferences-form").elements.push.checked = true;
+      status.textContent = "Push notifications are now enabled on this device.";
     } else {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") throw new Error("Notification permission was not granted. Check your browser or device settings.");
@@ -2250,6 +2271,7 @@ async function savePreferences(event) {
   const {error}=await supabaseClient.from("notification_preferences").upsert(rows,{onConflict:"user_id,channel"});
   button.disabled=false;button.textContent="Save preferences";
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
+  if(!error) await refreshPushDeviceControl();
 }
 document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
 document.querySelector("#start-race-clock-button").addEventListener("click",startRaceClock);
