@@ -2037,7 +2037,7 @@ async function resendRiderInvitation(riderId, button) {
     button.textContent = "Resend invitation";
   }
 }
-async async function inviteRiderAccount(event) {
+async function inviteRiderAccount(event) {
   event.preventDefault(); if (!isAdministrator()) return;
   const form=event.currentTarget; const button=document.querySelector("#invite-rider-account");
   button.disabled=true;button.textContent="Saving login…";setModuleMessage("#account-management-message","Creating or updating the rider login securely…");
