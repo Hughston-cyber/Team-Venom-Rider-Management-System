@@ -22,12 +22,15 @@
       <div class="auth-brand"><span class="brand-mark">V</span><div><strong>TEAM <em>VENOM</em></strong><small>RIDER OPERATIONS</small></div></div>
       <p class="eyebrow">SECURE TEAM ACCESS</p>
       <h1>Welcome back<span>.</span></h1>
-      <p class="auth-copy">Access your authorised Team Venom account using a secure one-time email link.</p>
+      <p class="auth-copy">Choose your access area and sign in with your assigned credentials.</p>
       <form id="login-form">
-        <label for="login-email">Registered email address</label>
-        <input id="login-email" name="email" type="email" autocomplete="email" required>
-        <p class="auth-copy auth-login-hint">We'll send a secure, one-time sign-in link to your registered email address. No password needed.</p>
-        <button class="auth-submit" id="login-submit" type="submit">Email sign-in link <span>→</span></button>
+        <label for="login-mode">Login area</label>
+        <select id="login-mode" name="login_mode"><option value="rider">Rider Workspace</option><option value="admin">Team Admin</option></select>
+        <div id="login-username-field"><label for="login-username">Rider username</label><input id="login-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+        <div id="login-email-field" hidden><label for="login-email">Administrator email</label><input id="login-email" name="email" type="email" autocomplete="username"></div>
+        <label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <p class="auth-copy auth-login-hint">Rider usernames are not case-sensitive. Passwords are case-sensitive.</p>
+        <button class="auth-submit" id="login-submit" type="submit">Sign in <span>→</span></button>
       </form>
       <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       <p class="auth-foot">Private workspace · Access is managed by Team Venom administrators</p>
@@ -41,12 +44,13 @@
       </a>
       <div class="workspace-label">WORKSPACE</div>
       <nav class="nav" aria-label="Main navigation">
-        <button class="nav-link active" data-view="overview"><span>▦</span> Overview</button>
-        <button class="nav-link" data-view="riders"><span>♙</span> Riders</button>
-        <button class="nav-link" data-view="rosters"><span>▤</span> Rosters</button>
-        <button class="nav-link" data-view="roster-versions"><span>▧</span> Roster versions</button>
+        <button class="nav-link active" data-view="rider-workspace" data-role="rider" hidden><span>♙</span> Rider workspace</button>
+        <button class="nav-link" data-view="overview" data-role="staff"><span>▦</span> Overview</button>
+        <button class="nav-link" data-view="riders" data-role="staff"><span>♙</span> Riders</button>
+        <button class="nav-link" data-view="rosters" data-role="staff"><span>▤</span> Rosters</button>
+        <button class="nav-link" data-view="roster-versions" data-role="staff"><span>▧</span> Roster versions</button>
         <button class="nav-link" data-view="race-day"><span>◷</span> Race day</button>
-        <button class="nav-link" data-view="performance"><span>↗</span> Performance</button>
+        <button class="nav-link" data-view="performance" data-role="staff"><span>↗</span> Performance</button>
         <button class="nav-link" data-view="notifications"><span>◉</span> Notifications</button>
         <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><span>♙</span> Account management</button>
       </nav>
@@ -100,6 +104,11 @@
           </article>
         </div>
         <footer>TEAM VENOM <span>•</span> RIDER MANAGEMENT SYSTEM <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+        </div>
+        <div id="rider-workspace-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM VENOM / RIDER ACCESS</p><h1>Your rider workspace<span>.</span></h1><p class="subheading">Your profile and published upcoming stints, all in one place.</p></div><div class="heading-actions"><button class="text-button" type="button" data-view="race-day">Open race-day monitor</button></div></div>
+          <section class="panel roster-form-panel"><div class="panel-heading"><div><p class="eyebrow">YOUR PROFILE</p><h2>Rider details</h2></div></div><div id="rider-workspace-details"></div><p class="inline-message" id="rider-workspace-message" role="status">Loading your rider workspace…</p></section>
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">PUBLISHED ROSTER</p><h2>Your upcoming stints</h2></div></div><div id="rider-workspace-stints" class="record-list"><p>Loading your roster…</p></div></section>
         </div>
         <div id="riders-content" hidden>
           <div class="page-heading">
@@ -331,24 +340,16 @@
             <p class="inline-message" id="team-venom-gmail-status" role="status">Checking Gmail connection…</p>
           </section>
           <section class="panel roster-form-panel">
-            <div class="panel-heading"><div><p class="eyebrow">NEW MEMBER ACCESS</p><h2>Create a rider account</h2></div><span class="panel-tag">ADMIN ONLY</span></div>
+            <div class="panel-heading"><div><p class="eyebrow">NEW MEMBER ACCESS</p><h2>Create or update rider login</h2></div><span class="panel-tag">ADMIN ONLY</span></div>
             <form id="create-rider-account-form" class="roster-form-grid">
               <label>Rider profile<select id="account-rider-select" name="rider_id" required><option value="">Loading rider profiles…</option></select></label>
-              <label>Email address<input name="email" type="email" maxlength="254" autocomplete="off" placeholder="rider@example.com" required></label>
-              <div class="form-actions"><button class="primary-button" id="invite-rider-account" type="submit">Send invitation</button></div>
+              <label>Username<input id="account-username" name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9]+" autocomplete="off" autocapitalize="none" required></label>
+              <label>Permanent password<input name="password" type="password" minlength="10" maxlength="72" autocomplete="new-password" required></label>
+              <label>Contact email <span class="muted">(optional)</span><input name="contact_email" type="email" maxlength="254" autocomplete="off" placeholder="rider@example.com"></label>
+              <div class="form-actions"><button class="primary-button" id="invite-rider-account" type="submit">Create / update rider login</button></div>
             </form>
-            <p class="profile-note-help">The rider receives an email invitation, accepts it and creates their own password. New accounts receive the standard Member role. Passwords are never visible to administrators.</p>
+            <p class="profile-note-help">The username is suggested from the rider's first and last name. Usernames are case-insensitive; passwords are case-sensitive. Passwords are securely managed by Supabase. Share the assigned credentials directly with the rider.</p>
             <p class="inline-message" id="account-management-message" role="status"></p>
-          </section>
-          <section class="panel roster-form-panel">
-            <div class="panel-heading"><div><p class="eyebrow">EXISTING MEMBER ACCESS</p><h2>Link an existing account</h2></div><span class="panel-tag">NO PASSWORD CHANGES</span></div>
-            <form id="link-existing-account-form" class="roster-form-grid">
-              <label>Rider profile<select id="account-link-rider-select" name="rider_id" required><option value="">Loading rider profiles…</option></select></label>
-              <label>Existing account email<input name="email" type="email" maxlength="254" autocomplete="off" placeholder="existing-member@example.com" required></label>
-              <div class="form-actions"><button class="primary-button" id="link-existing-account" type="submit">Link existing account</button></div>
-            </form>
-            <p class="profile-note-help">Use the exact email address the member uses to sign in. This links their current login to the selected rider profile. Their password, email and assigned roles are left unchanged.</p>
-            <p class="inline-message" id="link-account-message" role="status"></p>
           </section>
           <section class="panel">
             <div class="panel-heading"><div><p class="eyebrow">ACCOUNT DIRECTORY</p><h2>Rider account links</h2></div><button class="text-button" type="button" id="refresh-rider-accounts">↻ Refresh</button></div>
