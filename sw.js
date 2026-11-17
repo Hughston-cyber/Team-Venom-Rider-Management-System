@@ -1,4 +1,4 @@
-const CACHE_NAME = "team-venom-shell-v6";
+const CACHE_NAME = "team-venom-shell-v7";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -25,15 +25,26 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      // Prefer the live site so login fixes are not hidden behind an old cached shell.
+      const response = await fetch(request);
       if (response.ok && url.pathname.endsWith((".html", ".js", ".css", ".svg", ".webmanifest"))) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        await cache.put(request, response.clone());
       }
       return response;
-    }))
-  );
+    } catch (error) {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      if (request.mode === "navigate") {
+        const offlinePage = await cache.match("./index.html");
+        if (offlinePage) return offlinePage;
+      }
+      return Response.error();
+    }
+  })());
 });
 
 self.addEventListener("push", event => {
