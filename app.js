@@ -1,6 +1,42 @@
 const SUPABASE_URL = "https://xqfbmioydhuycvvkafwq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xPxK2aWz7gIkafxhiMIVGQ_mG77O6dD";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let emergencyAudioContext = null;
+let emergencyAudioUnlocked = false;
+function unlockEmergencyAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  if (!emergencyAudioContext) emergencyAudioContext = new AudioContextClass();
+  emergencyAudioContext.resume().then(() => { emergencyAudioUnlocked = emergencyAudioContext.state === "running"; }).catch(() => {});
+}
+window.addEventListener("pointerdown", unlockEmergencyAudio, { passive: true });
+window.addEventListener("keydown", unlockEmergencyAudio);
+function playEmergencyBeepBeep() {
+  if (!emergencyAudioContext || !emergencyAudioUnlocked || emergencyAudioContext.state !== "running") return;
+  const ctx = emergencyAudioContext;
+  const now = ctx.currentTime;
+  [880, 660].forEach((frequency, index) => {
+    const start = now + index * 0.32;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.16, start + 0.025);
+    gain.gain.setValueAtTime(0.16, start + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.23);
+  });
+}
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", event => {
+    if (event.data?.type === "TEAM_VENOM_EMERGENCY_ALERT") playEmergencyBeepBeep();
+  });
+}
+
 
 const authScreen = document.querySelector("#auth-screen");
 const appShell = document.querySelector("#app-shell");
