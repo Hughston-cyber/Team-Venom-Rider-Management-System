@@ -1890,6 +1890,23 @@ async function performRiderChangeover() {
   status.classList.remove("error-state");
   status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
   void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
+  const eventStints = raceDayRosterStints
+    .filter(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published")
+    .sort((left, right) => new Date(left.scheduled_start).getTime() - new Date(right.scheduled_start).getTime());
+  const currentIndex = eventStints.findIndex(item => item.id === data?.current_roster_stint_id);
+  const nextStint = currentIndex >= 0 ? eventStints[currentIndex + 1] : null;
+  if (nextStint?.rider_id) {
+    const nextName = liveRiderName(nextStint);
+    const { data: nextAlert, error: nextAlertError } = await supabaseClient.functions.invoke("push-notifications", {
+      body: { action: "notify_next_rider", event_id: liveSelectedEventId, rider_id: nextStint.rider_id }
+    });
+    if (nextAlertError || nextAlert?.error) {
+      console.warn("Next rider notification could not be delivered:", nextAlert?.error || nextAlertError?.message);
+      status.textContent += " · Next rider alert could not be sent.";
+    } else {
+      status.textContent += " · " + nextName + " notified for their upcoming stint.";
+    }
+  }
   renderLiveRaceDisplay();
 }
 async function undoRiderChangeover() {
