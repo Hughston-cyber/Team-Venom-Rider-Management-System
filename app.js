@@ -1876,13 +1876,31 @@ async function startRaceFromGrid() {
   const changeoverStatus = document.querySelector("#changeover-status");
   const state = liveRaceStateByEvent[liveSelectedEventId];
   if (state?.race_clock_started_at) return performRiderChangeover();
+
   const firstStint = raceDayRosterStints
     .filter(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published")
-    .sort((a,b) => new Date(a.scheduled_start) - new Date(b.scheduled_start))[0];
-  if (!firstStint) return;
+    .sort((a,b) => new Date(a.scheduled_start) - new Date(b.scheduled_start) || Number(a.stint_number) - Number(b.stint_number))[0];
+  if (!firstStint) {
+    clockStatus.textContent = "No published roster is available to start.";
+    return;
+  }
+
   button.disabled = true;
   button.textContent = "STARTING RACE…";
   clockStatus.classList.remove("error-state");
+
+  // Set the first rostered stint as CURRENT before starting the clock.
+  // Do not call advance_live_changeover here: that RPC advances one rider
+  // beyond the first stint when the live state is empty.
+  const { data: riderData, error: riderError } = await supabaseClient.rpc("restart_live_roster", { p_event_id: liveSelectedEventId });
+  if (riderError) {
+    clockStatus.textContent = riderError.message || "The first rider could not be assigned.";
+    clockStatus.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (riderData) liveRaceStateByEvent[riderData.event_id] = riderData;
+
   const { data: clockData, error: clockError } = await supabaseClient.rpc("start_live_race_clock", { p_event_id: liveSelectedEventId });
   if (clockError) {
     clockStatus.textContent = clockError.message || "The race clock could not be started.";
@@ -1891,20 +1909,11 @@ async function startRaceFromGrid() {
     return;
   }
   if (clockData) liveRaceStateByEvent[clockData.event_id] = clockData;
-  const { data: riderData, error: riderError } = await supabaseClient.rpc("advance_live_changeover", { p_event_id: liveSelectedEventId });
-  if (riderError) {
-    await supabaseClient.rpc("stop_live_race_clock", { p_event_id: liveSelectedEventId });
-    clockStatus.textContent = "Race start failed: " + (riderError.message || "the first rider could not be assigned.");
-    clockStatus.classList.add("error-state");
-    renderLiveRaceDisplay();
-    return;
-  }
-  if (riderData) liveRaceStateByEvent[riderData.event_id] = riderData;
+
   changeoverStatus.classList.remove("error-state");
-  changeoverStatus.textContent = "Race started · " + liveTime(riderData?.changed_at || new Date().toISOString());
-  clockStatus.textContent = "The 24-hour race clock has started.";
+  changeoverStatus.textContent = "Race started · " + liveTime(clockData?.race_clock_started_at || new Date().toISOString());
+  clockStatus.textContent = "The 24-hour race clock has started. " + liveRiderName(firstStint) + " is riding first.";
   void sendOperationalPush("race_clock_started", { event_id: liveSelectedEventId });
-  void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
   renderLiveRaceDisplay();
 }
 async function startRaceClock() {
