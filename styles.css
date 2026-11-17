@@ -244,3 +244,23 @@ button{touch-action:manipulation}
 @media(display-mode:standalone){
   body{min-height:100vh;min-height:100svh}
 }
+
+
+/* Race Control home dashboard */
+.race-control-heading{align-items:center}
+.race-control-statusbar{display:flex;align-items:center;gap:9px;padding:12px 15px;margin:0 0 18px;background:#0c140e;border:1px solid #2e402e;border-radius:5px;color:#cbd4cd;font-size:9px;letter-spacing:1px}
+.race-control-status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(145,220,73,.55);flex:0 0 8px}
+.race-control-status-time{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.race-control-live-display{margin-top:0}
+.race-control-clock-layout{margin-top:0}
+.race-control-team-card{min-height:205px;justify-content:center}
+.race-control-quick-section{margin-top:26px}
+.race-control-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.race-control-quick-card{position:relative;min-width:0;min-height:130px;padding:16px;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--text);cursor:pointer;transition:border-color .15s,transform .15s}
+.race-control-quick-card:hover{border-color:var(--green);transform:translateY(-2px)}
+.race-control-quick-card>span{font-size:19px;color:var(--green)}
+.race-control-quick-card strong{font-size:11px}
+.race-control-quick-card small{font-size:9px;line-height:1.5;color:var(--muted)}
+.race-control-quick-card b{position:absolute;right:14px;bottom:12px;color:var(--green);font-size:15px}
+@media(max-width:900px){.race-control-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.race-control-heading{align-items:flex-start;gap:12px;flex-direction:column}.race-control-heading .heading-actions{width:100%;justify-content:space-between}.race-control-statusbar{align-items:flex-start;flex-wrap:wrap}.race-control-status-time{width:100%;margin-left:17px}.race-control-quick-grid{grid-template-columns:1fr 1fr}.race-control-quick-card{min-height:120px;padding:12px}.race-control-quick-card strong{font-size:10px}.race-control-quick-card small{font-size:8px}}
