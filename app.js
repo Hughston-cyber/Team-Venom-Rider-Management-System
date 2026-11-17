@@ -1842,7 +1842,7 @@ function renderLiveRaceDisplay() {
   const stintTimer = document.querySelector("#current-stint-timer");
   if (stintTimer) {
     if (current && liveState?.changed_at) {
-      const elapsed = Math.max(0, Math.floor((now - new Date(liveState.changed_at).getTime()) / 1000));
+      const elapsed = Math.max(0, Math.floor((now - new Date(liveState.current_stint_started_at || liveState.changed_at).getTime()) / 1000));
       const planned = Math.max(0, Math.floor((new Date(current.scheduled_end).getTime() - new Date(current.scheduled_start).getTime()) / 1000));
       const difference = planned - elapsed;
       const format = value => {
@@ -2059,6 +2059,7 @@ async function undoRiderChangeover() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "Changeover undone · " + liveTime(data?.changed_at || new Date().toISOString());
+  await loadChangeoverLog();
   renderLiveRaceDisplay();
 }
 async function restartLiveRoster() {
@@ -2124,7 +2125,7 @@ async function loadRaceDay() {
   const [rosterResult, ridersResult, liveStateResult] = await Promise.all([
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
-    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds,race_clock_paused_at")
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds,race_clock_paused_at,current_stint_started_at")
   ]);
   if (rosterResult.error || ridersResult.error) {
     const status = document.querySelector("#race-clock-status");
