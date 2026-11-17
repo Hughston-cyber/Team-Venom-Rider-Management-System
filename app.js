@@ -1971,7 +1971,6 @@ async function testTeamVenomGmail() {
 async function loadRiderAccounts() {
   const list = document.querySelector("#rider-account-list");
   const select = document.querySelector("#account-rider-select");
-  const linkSelect = document.querySelector("#account-link-rider-select");
   if (!isAdministrator()) { list.textContent = "Administrator access is required."; return; }
   list.textContent = "Loading rider accounts…";
   const { data, error } = await supabaseClient.functions.invoke("rider-account-management", { body: { action: "list" } });
@@ -1985,10 +1984,6 @@ async function loadRiderAccounts() {
   select.replaceChildren(new Option("Choose an active rider…", ""));
   available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); option.dataset.username=(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
   if (available.some(item => item.id === selected)) select.value = selected;
-  const linkSelected = linkSelect.value;
-  linkSelect.replaceChildren(new Option("Choose an active rider…", ""));
-  available.filter(rider=>!rider.account).forEach(rider=>linkSelect.add(new Option(displayRiderName(rider),rider.id)));
-  if (available.some(item => item.id === linkSelected)) linkSelect.value = linkSelected;
   list.replaceChildren();
   if (!riders.length) {
     list.textContent = "No rider profiles have been created yet. Add riders in the Rider directory first.";
@@ -2071,7 +2066,6 @@ async function linkExistingRiderAccount(event) {
     button.disabled = false; button.textContent = "Link existing account";
   }
 }
-document.querySelector("#link-existing-account-form").addEventListener("submit", linkExistingRiderAccount);
 document.querySelector("#create-rider-account-form").addEventListener("submit", inviteRiderAccount);
 document.querySelector("#account-rider-select").addEventListener("change",event=>{const option=event.currentTarget.selectedOptions[0];if(option?.dataset.username)document.querySelector("#account-username").value=option.dataset.username;});
 document.querySelector("#refresh-rider-accounts").addEventListener("click", loadRiderAccounts);
