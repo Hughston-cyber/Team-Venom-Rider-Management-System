@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261117-8">
+  <link rel="stylesheet" href="styles.css?v=20261117-9">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261117-8" defer></script>
+  <script src="app.js?v=20261117-9" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -119,7 +119,7 @@
           <footer>TEAM VENOM <span>•</span> RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
         </div>
         <div id="changeover-log-content" hidden>
-          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / RACE RECORD</p><h1>Changeover log<span>.</span></h1><p class="subheading">A permanent record of confirmed rider handovers, stint durations and race-clock times.</p></div><div class="heading-actions"><button class="text-button" id="refresh-changeover-log" type="button">↻ Refresh log</button></div></div>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / RACE RECORD</p><h1>Changeover log<span>.</span></h1><p class="subheading">A permanent record of confirmed rider handovers, stint durations and race-clock times.</p></div><div class="heading-actions"><button class="text-button" id="refresh-changeover-log" type="button">↻ Refresh log</button><button class="text-button danger-text" id="clear-changeover-log" type="button" hidden>Clear logs</button></div></div>
           <section class="changeover-log-section panel" aria-label="Race changeover log">
             <div class="changeover-log-title"><div><p class="eyebrow">RACE RECORD</p><h2>Recorded handovers</h2><p class="muted">Times are recorded automatically when a rider changeover is confirmed.</p></div><span class="changeover-log-count" id="changeover-log-count">0 RECORDED</span></div>
             <div class="changeover-log-list" id="changeover-log-list"><p class="changeover-log-empty">Select an event to load its changeover history.</p></div>
