@@ -1627,6 +1627,7 @@ let currentUser = null;
 let currentRiderId = null;
 let lastLoginMode = null;
 let raceDayRosterStints = [];
+let raceChangeoverLog = [];
 let liveRaceStateByEvent = {};
 let liveSelectedEventId = null;
 let liveRaceChannel = null;
@@ -2000,6 +2001,7 @@ async function performRiderChangeover() {
   if (data) liveRaceStateByEvent[data.event_id] = data;
   status.classList.remove("error-state");
   status.textContent = "Changeover saved · " + liveTime(data?.changed_at || new Date().toISOString());
+  await loadChangeoverLog();
   void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
   // Read the saved live state and published roster again so the targeted alert
   // does not depend on a possibly stale in-memory roster list.
@@ -2080,6 +2082,31 @@ async function restartLiveRoster() {
   status.textContent = "Roster restarted from the first stint · " + liveTime(data?.changed_at || new Date().toISOString());
   renderLiveRaceDisplay();
 }
+function formatRaceDuration(totalSeconds) { const v=Math.max(0,Math.floor(Number(totalSeconds)||0)); return [Math.floor(v/3600),Math.floor((v%3600)/60),v%60].map(x=>String(x).padStart(2,'0')).join(':'); }
+function renderChangeoverLog() {
+ const list=document.querySelector('#changeover-log-list'), count=document.querySelector('#changeover-log-count'); if(!list)return; list.replaceChildren();
+ const rows=raceChangeoverLog.filter(row=>row.event_id===liveSelectedEventId); if(count)count.textContent=rows.length+' RECORDED';
+ if(!rows.length){const empty=document.createElement('p');empty.className='changeover-log-empty';empty.textContent='No changeovers recorded yet. Each confirmed rider handover will appear here.';list.append(empty);return;}
+ rows.forEach(row=>{
+  const from=raceDayRosterStints.find(stint=>stint.id===row.from_roster_stint_id),to=raceDayRosterStints.find(stint=>stint.id===row.to_roster_stint_id);
+  const item=document.createElement('article');item.className='changeover-log-item';
+  const heading=document.createElement('div');heading.className='changeover-log-heading';
+  const time=document.createElement('strong');time.textContent=new Date(row.changeover_at).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const clock=document.createElement('span');clock.textContent='RACE '+formatRaceDuration(row.race_elapsed_seconds);heading.append(time,clock);
+  const riders=document.createElement('p');riders.className='changeover-log-riders';riders.textContent=(from?liveRiderName(from):'Previous rider')+'  →  '+(to?liveRiderName(to):'Next rider');
+  const details=document.createElement('div');details.className='changeover-log-details';
+  const duration=document.createElement('span');duration.textContent='STINT '+formatRaceDuration(row.actual_stint_seconds);
+  const variance=document.createElement('strong'),diff=Number(row.variance_seconds)||0;variance.className=diff>0?'changeover-over':diff<0?'changeover-under':'';
+  variance.textContent=diff>0?'+'+formatRaceDuration(diff)+' OVER':diff<0?'−'+formatRaceDuration(Math.abs(diff))+' EARLY':'ON TIME';
+  details.append(duration,variance);item.append(heading,riders,details);list.append(item);
+ });
+}
+async function loadChangeoverLog(){
+ if(!liveSelectedEventId){raceChangeoverLog=[];renderChangeoverLog();return;}
+ const result=await supabaseClient.from('race_changeovers').select('id,event_id,from_roster_stint_id,to_roster_stint_id,changeover_at,race_elapsed_seconds,actual_stint_seconds,scheduled_stint_seconds,variance_seconds').eq('event_id',liveSelectedEventId).order('changeover_at',{ascending:false}).limit(30);
+ if(result.error){console.warn('Race changeover log could not be loaded:',result.error.message);const list=document.querySelector('#changeover-log-list');if(list)list.textContent='Changeover history is currently unavailable.';return;}
+ raceChangeoverLog=result.data||[];renderChangeoverLog();
+}
 function setupLiveRaceRealtime() {
   if (liveRaceChannel) return;
   liveRaceChannel = supabaseClient.channel("live-race-state-sync")
@@ -2087,7 +2114,8 @@ function setupLiveRaceRealtime() {
       if (payload.new?.event_id) liveRaceStateByEvent[payload.new.event_id] = payload.new;
       if (payload.eventType === "DELETE" && payload.old?.event_id) delete liveRaceStateByEvent[payload.old.event_id];
       renderLiveRaceDisplay();
-    }).subscribe();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'race_changeovers'},()=>{void loadChangeoverLog();}).subscribe();
 }
 setInterval(renderLiveRaceDisplay, 1000);
 
@@ -2112,6 +2140,7 @@ async function loadRaceDay() {
   }));
   document.querySelector("#race-day-riders").textContent = (ridersResult.count ?? 0).toLocaleString("en-AU");
   renderLiveRaceDisplay();
+  await loadChangeoverLog();
 }
 async function loadPerformance() {
   const board=document.querySelector("#performance-leaderboard"); board.textContent="Loading performance data…";
