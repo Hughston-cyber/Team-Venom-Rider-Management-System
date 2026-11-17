@@ -1780,6 +1780,7 @@ function renderLiveRaceDisplay() {
     const moreClockControls = document.querySelector("#race-clock-more-controls");
     const canControlClock = canManageOperations() && !!liveSelectedEventId;
     if (startedAt) {
+      startRaceClockButton.hidden = false;
       if (moreClockControls) moreClockControls.hidden = false;
       const endTime = pausedAt ? new Date(pausedAt).getTime() : Date.now();
       const remaining = Math.max(0, duration - Math.floor((endTime - new Date(startedAt).getTime()) / 1000));
@@ -1803,17 +1804,21 @@ function renderLiveRaceDisplay() {
       if (moreClockControls) { moreClockControls.hidden = true; moreClockControls.open = false; }
       countdown.textContent = "24:00:00";
       raceClockLabel.textContent = "READY";
-      raceClockStatus.textContent = "The race clock is ready to start.";
-      startRaceClockButton.textContent = "START RACE CLOCK";
-      startRaceClockButton.disabled = !canControlClock || !raceDayRosterStints.some(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published");
+      raceClockStatus.textContent = "Ready to start. The first rider will be Hugh.";
+      startRaceClockButton.textContent = "START RACE";
+      startRaceClockButton.hidden = true;
+      startRaceClockButton.disabled = true;
       if (stopRaceClockButton) { stopRaceClockButton.hidden = true; stopRaceClockButton.disabled = true; }
       if (restartRaceClockButton) { restartRaceClockButton.hidden = true; restartRaceClockButton.disabled = true; }
     }
   }
   let current = null, next = null;
-  if (chosenStints.length) {
-    const storedId = liveRaceStateByEvent[chosenEventId]?.current_roster_stint_id;
-    let currentIndex = storedId ? chosenStints.findIndex(item => item.id === storedId) : -1;
+  const liveState = liveRaceStateByEvent[chosenEventId];
+  const raceHasStarted = !!liveState?.race_clock_started_at;
+  let currentIndex = -1;
+  if (chosenStints.length && raceHasStarted) {
+    const storedId = liveState?.current_roster_stint_id;
+    currentIndex = storedId ? chosenStints.findIndex(item => item.id === storedId) : -1;
     if (currentIndex < 0) {
       currentIndex = chosenStints.findIndex(item => new Date(item.scheduled_start).getTime() <= now && new Date(item.scheduled_end).getTime() > now);
       if (currentIndex < 0) currentIndex = chosenStints.findIndex(item => new Date(item.scheduled_start).getTime() > now);
@@ -1822,12 +1827,36 @@ function renderLiveRaceDisplay() {
       current = chosenStints[currentIndex];
       next = chosenStints[currentIndex + 1] || null;
     }
+  } else if (chosenStints.length) {
+    next = chosenStints[0];
   }
-  renderLiveRiderCard("current", current, "No rider currently scheduled", "Waiting for a published stint");
+  renderLiveRiderCard("current", current, "Race not started", "Press START RACE when the team is ready");
   renderLiveRiderCard("next", next, "No upcoming rider", "No future published stint found");
-  renderUpcomingRiders(chosenStints, current ? chosenStints.findIndex(item => item.id === current.id) : -1);
-  const button = document.querySelector("#rider-changeover-button");
-  if (button) button.disabled = !canManageOperations() || !current || !next;
+  renderUpcomingRiders(chosenStints, currentIndex);
+  const changeoverButton = document.querySelector("#rider-changeover-button");
+  if (changeoverButton) {
+    changeoverButton.textContent = raceHasStarted ? "RIDER CHANGEOVER" : "START RACE";
+    changeoverButton.disabled = !canManageOperations() || !chosenStints.length || (raceHasStarted && (!current || !next));
+  }
+  const stintTimer = document.querySelector("#current-stint-timer");
+  if (stintTimer) {
+    if (current && liveState?.changed_at) {
+      const elapsed = Math.max(0, Math.floor((now - new Date(liveState.changed_at).getTime()) / 1000));
+      const planned = Math.max(0, Math.floor((new Date(current.scheduled_end).getTime() - new Date(current.scheduled_start).getTime()) / 1000));
+      const difference = planned - elapsed;
+      const format = value => {
+        const abs = Math.abs(value);
+        return [Math.floor(abs / 3600), Math.floor((abs % 3600) / 60), abs % 60].map(part => String(part).padStart(2, "0")).join(":");
+      };
+      stintTimer.hidden = false;
+      stintTimer.textContent = "STINT TIME · " + format(elapsed) + (difference >= 0 ? "  ·  −" + format(difference) + " TO GO" : "  ·  +" + format(-difference) + " OVER");
+      stintTimer.classList.toggle("stint-over", difference < 0);
+    } else {
+      stintTimer.hidden = true;
+      stintTimer.textContent = "";
+      stintTimer.classList.remove("stint-over");
+    }
+  }
   const undoButton = document.querySelector("#undo-rider-changeover-button");
   if (undoButton) undoButton.disabled = !canManageOperations() || !liveRaceStateByEvent[chosenEventId]?.previous_roster_stint_id;
   const restartButton = document.querySelector("#restart-live-roster-button");
@@ -1839,6 +1868,44 @@ function renderLiveRaceDisplay() {
   } else if (status && !status.dataset.message) {
     status.textContent = "Changeovers sync to all connected devices.";
   }
+}
+async function startRaceFromGrid() {
+  if (!canManageOperations() || !liveSelectedEventId) return;
+  const button = document.querySelector("#rider-changeover-button");
+  const clockStatus = document.querySelector("#race-clock-status");
+  const changeoverStatus = document.querySelector("#changeover-status");
+  const state = liveRaceStateByEvent[liveSelectedEventId];
+  if (state?.race_clock_started_at) return performRiderChangeover();
+  const firstStint = raceDayRosterStints
+    .filter(item => item.rosters?.event_id === liveSelectedEventId && item.rosters?.status === "published")
+    .sort((a,b) => new Date(a.scheduled_start) - new Date(b.scheduled_start))[0];
+  if (!firstStint) return;
+  button.disabled = true;
+  button.textContent = "STARTING RACE…";
+  clockStatus.classList.remove("error-state");
+  const { data: clockData, error: clockError } = await supabaseClient.rpc("start_live_race_clock", { p_event_id: liveSelectedEventId });
+  if (clockError) {
+    clockStatus.textContent = clockError.message || "The race clock could not be started.";
+    clockStatus.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (clockData) liveRaceStateByEvent[clockData.event_id] = clockData;
+  const { data: riderData, error: riderError } = await supabaseClient.rpc("advance_live_changeover", { p_event_id: liveSelectedEventId });
+  if (riderError) {
+    await supabaseClient.rpc("stop_live_race_clock", { p_event_id: liveSelectedEventId });
+    clockStatus.textContent = "Race start failed: " + (riderError.message || "the first rider could not be assigned.");
+    clockStatus.classList.add("error-state");
+    renderLiveRaceDisplay();
+    return;
+  }
+  if (riderData) liveRaceStateByEvent[riderData.event_id] = riderData;
+  changeoverStatus.classList.remove("error-state");
+  changeoverStatus.textContent = "Race started · " + liveTime(riderData?.changed_at || new Date().toISOString());
+  clockStatus.textContent = "The 24-hour race clock has started.";
+  void sendOperationalPush("race_clock_started", { event_id: liveSelectedEventId });
+  void sendOperationalPush("rider_changeover", { event_id: liveSelectedEventId });
+  renderLiveRaceDisplay();
 }
 async function startRaceClock() {
   if (!canManageOperations() || !liveSelectedEventId) return;
@@ -2375,7 +2442,7 @@ async function savePreferences(event) {
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
   if(!error) await refreshPushDeviceControl();
 }
-document.querySelector("#rider-changeover-button").addEventListener("click",performRiderChangeover);
+document.querySelector("#rider-changeover-button").addEventListener("click",startRaceFromGrid);
 document.querySelector("#start-race-clock-button").addEventListener("click",startRaceClock);
 document.querySelector("#stop-race-clock-button").addEventListener("click",stopRaceClock);
 document.querySelector("#restart-race-clock-button").addEventListener("click",restartRaceClock);
