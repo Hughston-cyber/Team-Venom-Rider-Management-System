@@ -2448,7 +2448,7 @@ async function loadSettings() {
   const {data,error}=await supabaseClient.from("notification_preferences").select("channel,enabled").eq("user_id",currentUser.id);
   if(error){setModuleMessage("#preferences-message","Could not load preferences. Please refresh.",true);return;}
   const preferences=new Map((data||[]).map(item=>[item.channel,item.enabled]));
-  ["in_app","email","push"].forEach(channel=>{const field=document.querySelector("#notification-preferences-form").elements[channel];field.checked=preferences.has(channel)?preferences.get(channel):channel==="in_app";});
+  ["in_app","email"].forEach(channel=>{const field=document.querySelector("#notification-preferences-form").elements[channel];field.checked=preferences.has(channel)?preferences.get(channel):channel==="in_app";});
   await refreshPushDeviceControl();
 }
 function urlBase64ToUint8Array(value) {
@@ -2458,51 +2458,48 @@ function urlBase64ToUint8Array(value) {
   return Uint8Array.from(raw, character => character.charCodeAt(0));
 }
 async function refreshPushDeviceControl() {
-  const button = document.querySelector("#toggle-push-device");
+  const toggle = document.querySelector("#toggle-push-device");
   const status = document.querySelector("#push-device-message");
-  if (!button || !status) return;
-  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const testButton = document.querySelector("#test-push-device");
+  if (!toggle || !status) return;
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (!supported) {
-    button.disabled = true;
+    toggle.disabled = true;
     if (testButton) testButton.disabled = true;
-    button.textContent = "Push not supported in this browser";
-    status.textContent = "Use a supported browser. On iPhone or iPad, add this website to your Home Screen first.";
+    status.textContent = "This browser does not support web push notifications. Try Safari on your Mac.";
     return;
   }
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
-    const { data: preference, error } = await supabaseClient
-      .from("notification_preferences").select("enabled")
-      .eq("user_id", currentUser.id).eq("channel", "push").maybeSingle();
-    if (error) throw error;
-    const pushEnabled = preference?.enabled === true;
-    button.disabled = false;
+    toggle.disabled = false;
+    toggle.checked = !!subscription;
     if (testButton) testButton.disabled = !subscription;
-    button.textContent = subscription
-      ? (pushEnabled ? "Disable push on this device" : "Enable push delivery on this device")
-      : "Enable push on this device";
     status.textContent = subscription
-      ? (pushEnabled
-          ? "This device is registered and push delivery is enabled for your account."
-          : "This device is registered, but push delivery is switched off. Enable it here to receive alerts.")
-      : "Push notifications have not been enabled on this device.";
+      ? "This Mac/browser is registered. Notifications will appear on this device only."
+      : (Notification.permission === "denied"
+          ? "Notifications are blocked in your browser or macOS settings."
+          : "Notifications are currently off on this device. Turn on the switch to enable them.");
   } catch (error) {
-    button.disabled = true;
+    toggle.disabled = true;
     if (testButton) testButton.disabled = true;
-    status.textContent = "Push settings could not be checked. Refresh and try again.";
+    status.textContent = "This device's push settings could not be checked. Refresh and try again.";
   }
 }
 async function sendPushTest() {
   const button = document.querySelector("#test-push-device");
   const status = document.querySelector("#push-device-message");
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
+  if (!subscription) return;
   button.disabled = true;
   button.textContent = "Sending test…";
   try {
-    const { data, error } = await supabaseClient.functions.invoke("push-notifications", { body: { action: "test" } });
+    const { data, error } = await supabaseClient.functions.invoke("push-notifications", {
+      body: { action: "test", endpoint: subscription.endpoint }
+    });
     if (error || data?.error) throw error || new Error(data.error);
-    status.textContent = "Test notification sent to " + (data?.pushDevices || 0) + " registered device(s).";
+    status.textContent = "A test notification has been sent to this device.";
     setModuleMessage("#preferences-message", status.textContent);
   } catch (error) {
     status.textContent = error?.message || "The test notification could not be sent.";
@@ -2511,38 +2508,27 @@ async function sendPushTest() {
     await refreshPushDeviceControl();
   }
 }
-async function togglePushDevice() {
-  const button = document.querySelector("#toggle-push-device");
+async function togglePushDevice(event) {
+  const toggle = event.currentTarget;
   const status = document.querySelector("#push-device-message");
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
-  button.disabled = true;
-  button.textContent = "Updating…";
+  const enable = toggle.checked;
+  toggle.disabled = true;
   try {
     const registration = await navigator.serviceWorker.ready;
     const existing = await registration.pushManager.getSubscription();
-    const { data: preference, error: preferenceError } = await supabaseClient
-      .from("notification_preferences").select("enabled")
-      .eq("user_id", currentUser.id).eq("channel", "push").maybeSingle();
-    if (preferenceError) throw preferenceError;
-    const pushEnabled = preference?.enabled === true;
-    if (existing && pushEnabled) {
-      const { error } = await supabaseClient.functions.invoke("push-notifications", {
-        body: { action: "unsubscribe", endpoint: existing.endpoint }
-      });
-      if (error) throw error;
-      await existing.unsubscribe();
-      document.querySelector("#notification-preferences-form").elements.push.checked = false;
-      status.textContent = "Push delivery has been disabled on this device.";
-    } else if (existing) {
-      const { error } = await supabaseClient.functions.invoke("push-notifications", {
-        body: { action: "subscribe", subscription: existing.toJSON() }
-      });
-      if (error) throw error;
-      document.querySelector("#notification-preferences-form").elements.push.checked = true;
-      status.textContent = "Push notifications are now enabled on this device.";
-    } else {
+    if (!enable) {
+      if (existing) {
+        const { error } = await supabaseClient.functions.invoke("push-notifications", {
+          body: { action: "unsubscribe", endpoint: existing.endpoint }
+        });
+        if (error) throw error;
+        await existing.unsubscribe();
+      }
+      status.textContent = "Notifications are now off on this device only.";
+    } else if (!existing) {
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") throw new Error("Notification permission was not granted. Check your browser or device settings.");
+      if (permission !== "granted") throw new Error("Notification permission was not granted. Allow notifications for this website in Safari and macOS settings.");
       const { data, error } = await supabaseClient.functions.invoke("push-notifications", { body: { action: "public-key" } });
       if (error || !data?.publicKey) throw error || new Error("The push public key could not be loaded.");
       const subscription = await registration.pushManager.subscribe({
@@ -2556,22 +2542,23 @@ async function togglePushDevice() {
         await subscription.unsubscribe();
         throw saveError;
       }
-      document.querySelector("#notification-preferences-form").elements.push.checked = true;
-      status.textContent = "Push notifications are enabled on this device.";
+      status.textContent = "Notifications are now on for this device only.";
+    } else {
+      status.textContent = "Notifications are already on for this device.";
     }
     await refreshPushDeviceControl();
     setModuleMessage("#preferences-message", status.textContent);
   } catch (error) {
-    status.textContent = error?.message || "Push settings could not be updated.";
+    toggle.checked = !enable;
+    status.textContent = error?.message || "This device's notification setting could not be updated.";
     setModuleMessage("#preferences-message", status.textContent, true);
-    await refreshPushDeviceControl();
   } finally {
-    button.disabled = false;
+    toggle.disabled = false;
   }
 }
 async function savePreferences(event) {
   event.preventDefault();const form=event.currentTarget;const button=document.querySelector("#save-preferences");button.disabled=true;button.textContent="Saving…";
-  const rows=["in_app","email","push"].map(channel=>({user_id:currentUser.id,channel,enabled:form.elements[channel].checked,updated_at:new Date().toISOString()}));
+  const rows=["in_app","email"].map(channel=>({user_id:currentUser.id,channel,enabled:form.elements[channel].checked,updated_at:new Date().toISOString()}));
   const {error}=await supabaseClient.from("notification_preferences").upsert(rows,{onConflict:"user_id,channel"});
   button.disabled=false;button.textContent="Save preferences";
   setModuleMessage("#preferences-message",error?"Preferences could not be saved: "+error.message:"Notification preferences saved.",!!error);
@@ -2588,5 +2575,5 @@ document.querySelector("#refresh-performance").addEventListener("click",loadPerf
 document.querySelector("#refresh-notifications").addEventListener("click",loadNotifications);
 document.querySelector("#announcement-form").addEventListener("submit",sendAnnouncement);
 document.querySelector("#notification-preferences-form").addEventListener("submit",savePreferences);
-document.querySelector("#toggle-push-device").addEventListener("click",togglePushDevice);
+document.querySelector("#toggle-push-device").addEventListener("change",togglePushDevice);
 document.querySelector("#test-push-device").addEventListener("click",sendPushTest);
