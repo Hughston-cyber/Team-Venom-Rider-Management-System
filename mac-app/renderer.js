@@ -10,7 +10,19 @@ function freshState() {
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return saved && Array.isArray(saved.riders) ? { ...freshState(), ...saved, running: false, endsAt: null } : freshState();
+    if (!saved || !Array.isArray(saved.riders)) return freshState();
+    const restored = { ...freshState(), ...saved };
+    if (restored.running && restored.endsAt) {
+      restored.remainingSeconds = Math.max(0, Math.ceil((restored.endsAt - Date.now()) / 1000));
+      if (restored.remainingSeconds === 0) {
+        restored.running = false;
+        restored.endsAt = null;
+      }
+    } else {
+      restored.running = false;
+      restored.endsAt = null;
+    }
+    return restored;
   } catch { return freshState(); }
 }
 function saveState() {
@@ -138,3 +150,4 @@ function updateLocalClock() {
   $("#local-clock").textContent = now; $("#event-time").textContent = now;
 }
 updateLocalClock(); setInterval(updateLocalClock,1000); render();
+if (state.running) timerHandle = setInterval(tick, 250);
