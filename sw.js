@@ -1,4 +1,4 @@
-const CACHE_NAME = "team-venom-shell-v7";
+const CACHE_NAME = "team-venom-shell-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -50,16 +50,23 @@ self.addEventListener("fetch", event => {
 self.addEventListener("push", event => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data?.text() || "" }; }
-  const title = payload.title || "Team Venom";
+  const emergency = payload.emergency === true;
+  const title = emergency ? "🚨 EMERGENCY · " + (payload.title || "Team Venom") : (payload.title || "Team Venom");
   const options = {
     body: payload.body || "You have a new Team Venom update.",
     icon: payload.icon || "./favicon.svg",
     badge: payload.badge || "./favicon.svg",
     tag: payload.tag || "team-venom-update",
     renotify: true,
-    data: payload.data || { url: "./" }
+    requireInteraction: emergency,
+    ...(emergency ? { vibrate: [300, 120, 300, 120, 600], silent: false } : {}),
+    data: { ...(payload.data || { url: "./" }), emergency }
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  const tasks = [self.registration.showNotification(title, options)];
+  if (emergency) tasks.push(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+    clientList.forEach(client => client.postMessage({ type: "TEAM_VENOM_EMERGENCY_ALERT" }));
+  }));
+  event.waitUntil(Promise.all(tasks));
 });
 
 self.addEventListener("notificationclick", event => {
