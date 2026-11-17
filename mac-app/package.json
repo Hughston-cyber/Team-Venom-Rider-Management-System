@@ -1,0 +1,25 @@
+{
+  "name": "team-venom-offline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Team Venom offline race control for Apple Silicon Macs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac dmg --arm64"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "au.teamvenom.racecontrol.offline",
+    "productName": "Team Venom Offline",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "index.html", "styles.css", "renderer.js", "package.json"],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "category": "public.app-category.sports"
+    }
+  }
+}
