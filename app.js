@@ -563,7 +563,7 @@ async function showAuthenticatedWorkspace(session) {
   const profile=profileResult.data; const roles=(roleResult.data||[]).map(item=>item.role);
   const isAdmin=roles.includes("administrator"); const isMemberOnly=roles.includes("member")&&!roles.some(role=>["administrator","manager"].includes(role));
   if(!profile||profile.status!=="active"||!roles.length||(lastLoginMode==="admin"&&!isAdmin)||(lastLoginMode==="rider"&&!isMemberOnly&&!isAdmin)){appShell.hidden=true;authScreen.hidden=false;showMessage("This account is not authorised for that login area. Check your login type or contact a Team Venom administrator.");await supabaseClient.auth.signOut();return;}
-  if(isMemberOnly){const {data:link,error:linkError}=await supabaseClient.from("rider_account_links").select("rider_id").eq("user_id",userId).maybeSingle();if(linkError||!link?.rider_id){appShell.hidden=true;authScreen.hidden=false;showMessage("Your rider login is not linked to a rider profile. Contact a Team Venom administrator.");await supabaseClient.auth.signOut();return;}currentRiderId=link.rider_id;}else currentRiderId=null;
+  if(isMemberOnly||lastLoginMode==="rider"){const {data:link,error:linkError}=await supabaseClient.from("rider_account_links").select("rider_id").eq("user_id",userId).maybeSingle();if(linkError||!link?.rider_id){appShell.hidden=true;authScreen.hidden=false;showMessage("Your rider login is not linked to a rider profile. Contact a Team Venom administrator.");await supabaseClient.auth.signOut();return;}currentRiderId=link.rider_id;}else currentRiderId=null;
   currentProfile=profile;currentUser=session.user;currentRoles=roles;
   document.querySelector("#account-name").textContent=profile.display_name||"Team member";document.querySelector("#account-role").textContent=isAdmin?"ADMINISTRATOR":isMemberOnly?"RIDER":roles[0].toUpperCase();
   document.querySelector("#add-rider-toggle").hidden=!canManageRiders();document.querySelector("#account-management-nav").hidden=!isAdministrator();document.querySelector("#new-event-toggle").hidden=!rosterCanManage();
@@ -2016,7 +2016,7 @@ async function loadRiderAccounts() {
   const available = riders.filter(rider => rider.status === "active");
   const selected = select.value;
   select.replaceChildren(new Option("Choose an active rider…", ""));
-  available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); option.dataset.username=rider.account?.username||(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
+  available.forEach(rider => { const option=new Option(displayRiderName(rider),rider.id); const riderLogin=(rider.accounts||[]).find(account=>account.username)?.username||rider.account?.username; option.dataset.username=riderLogin||(rider.first_name+rider.last_name).replace(/[^a-z0-9]/gi,"").toLowerCase(); select.add(option); });
   if (available.some(item => item.id === selected)) select.value = selected;
   list.replaceChildren();
   if (!riders.length) {
@@ -2027,12 +2027,14 @@ async function loadRiderAccounts() {
     const row = document.createElement("article"); row.className = "record-row";
     const heading = document.createElement("strong"); heading.textContent = displayRiderName(rider);
     const detail = document.createElement("small");
-    detail.textContent = rider.account
-      ? (rider.account.username ? "Username: " + rider.account.username + " · " : "") + rider.account.email + " · Account " + rider.account.status + (rider.account.is_administrator ? " · Administrator" : " · Rider access")
+    const accounts = rider.accounts || (rider.account ? [rider.account] : []);
+    detail.textContent = accounts.length
+      ? accounts.map(account => (account.username ? "Rider login: " + account.username : "Email login: " + account.email) + " · " + account.status + (account.is_administrator ? " · Administrator" : " · Rider access")).join(" | ")
       : rider.status === "active" ? "No login account linked" : "Rider is not active · invitation unavailable";
     const badge = document.createElement("span");
-    badge.className = "status-badge " + (rider.account ? (rider.account.status === "active" ? "status-active" : "status-inactive") : "status-inactive");
-    badge.textContent = rider.account ? (rider.account.username ? "LOGIN ACTIVE" : "CREDENTIALS NEEDED") : "NOT LINKED";
+    const activeAccounts = accounts.filter(account => account.status === "active").length;
+    badge.className = "status-badge " + (activeAccounts ? "status-active" : "status-inactive");
+    badge.textContent = activeAccounts ? activeAccounts + (activeAccounts === 1 ? " LOGIN ACTIVE" : " LOGINS ACTIVE") : accounts.length ? "ACCOUNT INACTIVE" : "NOT LINKED";
     row.append(heading, detail, badge);
     list.append(row);
   });
