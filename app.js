@@ -1723,22 +1723,13 @@ function renderUpcomingRiders(stints, currentIndex) {
   section.hidden = upcoming.length === 0;
   upcoming.forEach(stint => {
     const item = document.createElement("li");
-    const name = document.createElement("span");
-    name.className = "upcoming-rider-name";
-    name.textContent = liveRiderName(stint);
-    const details = document.createElement("small");
-    details.className = "upcoming-rider-details";
     const start = new Date(stint.scheduled_start);
     const end = new Date(stint.scheduled_end);
     const timeOptions = { hour: "2-digit", minute: "2-digit", hour12: false };
     const startTime = start.toLocaleTimeString("en-AU", timeOptions);
     const endTime = end.toLocaleTimeString("en-AU", timeOptions);
     const daySuffix = start.toDateString() !== end.toDateString() ? " (+1 day)" : "";
-    details.textContent = `STINT ${stint.stint_number} · ${startTime}–${endTime}${daySuffix}`;
-    const text = document.createElement("span");
-    text.className = "upcoming-rider-text";
-    text.append(name, details);
-    item.append(text);
+    item.textContent = `STINT ${stint.stint_number} | ${liveRiderName(stint)} · ${startTime}–${endTime}${daySuffix}`;
     list.append(item);
   });
 }
