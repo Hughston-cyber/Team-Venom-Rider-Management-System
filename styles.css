@@ -267,8 +267,13 @@ button{touch-action:manipulation}
 
 
 /* Upcoming roster preview beneath the main next-rider card */
-.upcoming-riders{width:100%;max-width:300px;margin:17px auto 0;padding-top:13px;border-top:1px solid var(--line);text-align:left}
+.upcoming-riders{width:100%;max-width:390px;margin:17px auto 0;padding-top:13px;border-top:1px solid var(--line);text-align:left}
 .upcoming-riders-heading{margin:0 0 8px;color:var(--green);font-size:9px;font-weight:900;letter-spacing:1.5px;text-align:center}
-.upcoming-riders ol{list-style:none;counter-reset:upcoming-rider;margin:0;padding:0;display:grid;gap:6px}
-.upcoming-riders li{counter-increment:upcoming-rider;display:flex;align-items:center;gap:10px;color:var(--text);font-size:12px;font-weight:650;line-height:1.3}
+.upcoming-riders ol{list-style:none;counter-reset:upcoming-rider;margin:0;padding:0;display:grid;gap:0}
+.upcoming-riders li{counter-increment:upcoming-rider;display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;column-gap:12px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.055);color:var(--text);font-size:12px;font-weight:650;line-height:1.3}
+.upcoming-riders li:last-child{border-bottom:0}
 .upcoming-riders li::before{content:counter(upcoming-rider,decimal-leading-zero);color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;min-width:18px}
+.upcoming-rider-text{display:contents}
+.upcoming-rider-name{min-width:0;font-weight:750}
+.upcoming-rider-details{display:block;padding-left:11px;border-left:2px solid var(--green);color:var(--muted);font-size:10px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+@media(max-width:520px){.upcoming-riders li{grid-template-columns:20px minmax(0,1fr);row-gap:5px}.upcoming-rider-details{grid-column:2;padding-left:8px;border-left:2px solid var(--green)}}
