@@ -8,6 +8,17 @@
   function node(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!==undefined)n.textContent=text; return n; }
   function when(value) { return value ? new Date(value).toLocaleString("en-AU",{dateStyle:"medium",timeStyle:"short"}) : "Not recorded"; }
   function riderName(r) { return r ? (r.preferred_name ? r.preferred_name+" "+r.last_name : r.first_name+" "+r.last_name) : "Unknown rider"; }
+  function eventStartDate(event) {
+    if (!event?.start_date) return null;
+    const date = String(event.start_date).slice(0, 10);
+    const rawTime = String(event.start_time || "12:00").trim();
+    let time;
+    if (/^\\d{2}:\\d{2}$/.test(rawTime)) time = rawTime + ":00";
+    else if (/^\\d{2}:\\d{2}:\\d{2}$/.test(rawTime)) time = rawTime;
+    else return null;
+    const parsed = new Date(date + "T" + time);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
   async function log(action,module,record,details) {
     if(!currentUser?.id)return;
     const {error}=await supabaseClient.from("operations_activity").insert({actor_user_id:currentUser.id,action,module,record_id:record?String(record):null,details:details||{}});
@@ -34,7 +45,7 @@
     events=er.data||[]; riders=rr.data||[];
     ["#ops-contact-event","#ops-incident-event","#ops-availability-event","#ops-handover-event","#ops-countdown-event"].forEach(s=>fillEvents(s,false));
     fillEvents("#ops-availability-filter",true); fillRiders();
-    const next=events.find(e=>e.start_date&&new Date(e.start_date+"T"+(e.start_time||"12:00")+":00")>=new Date())||events[0];
+    const next=events.find(e=>{const start=eventStartDate(e);return start&&start>=new Date();})||events[0];
     if(next) ["#ops-countdown-event","#ops-availability-event","#ops-handover-event","#ops-incident-event"].forEach(s=>{if($(s)&&!$(s).value)$(s).value=next.id;});
     renderCountdown();
   }
@@ -96,7 +107,9 @@
   function renderCountdown() {
     const event=events.find(e=>e.id===$("#ops-countdown-event")?.value),out=$("#ops-countdown-value"),label=$("#ops-countdown-label");if(!out||!label)return;
     if(!event?.start_date){out.textContent="—";label.textContent="Choose an event with a start date.";return;}
-    const start=new Date(event.start_date+"T"+(event.start_time||"12:00")+":00"),remaining=start.getTime()-Date.now();
+    const start=eventStartDate(event);
+    if(!start){out.textContent="—";label.textContent="This event has an invalid start date or time. Ask an administrator to check the event details.";return;}
+    const remaining=start.getTime()-Date.now();
     if(remaining<=0){out.textContent="00:00:00";label.textContent=event.event_name+" has started.";return;}
     const d=Math.floor(remaining/86400000),h=Math.floor(remaining%86400000/3600000),m=Math.floor(remaining%3600000/60000),s=Math.floor(remaining%60000/1000);
     out.textContent=(d?d+"d ":"")+[h,m,s].map(x=>String(x).padStart(2,"0")).join(":");
