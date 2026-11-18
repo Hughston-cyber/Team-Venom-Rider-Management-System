@@ -709,6 +709,210 @@ loginForm.addEventListener("submit",async event=>{
   }
 });
 supabaseClient.auth.onAuthStateChange((event,session)=>{if(["INITIAL_SESSION","SIGNED_IN","SIGNED_OUT","USER_UPDATED"].includes(event)){setTimeout(()=>{void showAuthenticatedWorkspace(session);},0);}});
+
+/* EVENT SCHEDULE */
+let eventScheduleEvents = [];
+let eventScheduleActivities = [];
+let editingActivityId = null;
+let raceActivitiesByEvent = {};
+
+function localActivityDateTime(activity) {
+  const date = String(activity.activity_date || "").slice(0, 10);
+  const time = String(activity.start_time || "").trim();
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date) || !/^[0-9]{2}:[0-9]{2}(:[0-9]{2})?$/.test(time)) return new Date(NaN);
+  return new Date(date + "T" + (time.length === 5 ? time + ":00" : time));
+}
+
+function formatActivityTime(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString("en-AU", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }) : "Time not set";
+}
+
+async function loadEventSchedule() {
+  const list = document.querySelector("#event-schedule-list");
+  const eventSelect = document.querySelector("#schedule-event-select");
+  const message = document.querySelector("#event-schedule-message");
+  if (!list || !eventSelect) return;
+  list.innerHTML = '<p class="empty-state">Loading event schedule…</p>';
+  const { data: events, error: eventError } = await supabaseClient.from("race_events").select("id,event_name,season_year,venue,start_date").order("start_date", { ascending: false });
+  if (eventError) {
+    list.innerHTML = '<p class="empty-state error-state">Race events could not be loaded. Please refresh.</p>';
+    return;
+  }
+  eventScheduleEvents = events || [];
+  const selected = eventSelect.value;
+  eventSelect.replaceChildren(new Option("Select a race event…", ""));
+  eventScheduleEvents.forEach(item => {
+    const details = [item.season_year, item.venue].filter(Boolean).join(" · ");
+    eventSelect.add(new Option(details ? item.event_name + " · " + details : item.event_name, item.id));
+  });
+  if (eventScheduleEvents.some(item => item.id === selected)) eventSelect.value = selected;
+  else if (eventScheduleEvents.length === 1) eventSelect.value = eventScheduleEvents[0].id;
+  const eventId = eventSelect.value;
+  document.querySelector("#add-activity-toggle").hidden = !rosterCanManage() || !eventId;
+  document.querySelector("#event-activity-form-panel").hidden = true;
+  if (!eventId) {
+    list.innerHTML = '<p class="empty-state">Create or select a race event in Rosters to start building its activity schedule.</p>';
+    document.querySelector("#event-schedule-count").textContent = "0 ACTIVITIES";
+    return;
+  }
+  const { data, error } = await supabaseClient.from("race_event_activities")
+    .select("id,event_id,activity_name,activity_date,start_time,end_time,location,notes,display_order")
+    .eq("event_id", eventId).order("activity_date", { ascending: true })
+    .order("start_time", { ascending: true }).order("display_order", { ascending: true });
+  if (error) {
+    list.innerHTML = '<p class="empty-state error-state">The activity schedule could not be loaded. Check your access and refresh.</p>';
+    return;
+  }
+  eventScheduleActivities = data || [];
+  renderEventSchedule();
+  if (message && !message.textContent) message.textContent = "";
+}
+
+function renderEventSchedule() {
+  const list = document.querySelector("#event-schedule-list");
+  if (!list) return;
+  list.replaceChildren();
+  const count = document.querySelector("#event-schedule-count");
+  if (count) count.textContent = eventScheduleActivities.length + (eventScheduleActivities.length === 1 ? " ACTIVITY" : " ACTIVITIES");
+  if (!eventScheduleActivities.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No activities have been added yet. Add Design and Presentation, Design and Construction, Practice, The Race or anything else on your programme.";
+    list.append(empty);
+    return;
+  }
+  eventScheduleActivities.forEach(activity => {
+    const card = document.createElement("article");
+    card.className = "event-activity-card";
+    const main = document.createElement("div");
+    main.className = "event-activity-main";
+    const time = document.createElement("p");
+    time.className = "eyebrow";
+    time.textContent = formatActivityTime(localActivityDateTime(activity));
+    const heading = document.createElement("h3");
+    heading.textContent = activity.activity_name;
+    main.append(time, heading);
+    const metaText = [activity.location, activity.end_time ? "Ends " + activity.end_time.slice(0, 5) : ""].filter(Boolean).join(" · ");
+    if (metaText) {
+      const meta = document.createElement("p");
+      meta.className = "event-activity-meta";
+      meta.textContent = metaText;
+      main.append(meta);
+    }
+    if (activity.notes) {
+      const notes = document.createElement("p");
+      notes.className = "event-activity-notes";
+      notes.textContent = activity.notes;
+      main.append(notes);
+    }
+    card.append(main);
+    if (rosterCanManage()) {
+      const actions = document.createElement("div");
+      actions.className = "event-activity-actions";
+      const edit = document.createElement("button");
+      edit.type = "button"; edit.className = "text-button"; edit.textContent = "Edit";
+      edit.addEventListener("click", () => startActivityEdit(activity));
+      const remove = document.createElement("button");
+      remove.type = "button"; remove.className = "text-button danger-text"; remove.textContent = "Delete";
+      remove.addEventListener("click", () => deleteEventActivity(activity));
+      actions.append(edit, remove);
+      card.append(actions);
+    }
+    list.append(card);
+  });
+}
+
+function startActivityEdit(activity) {
+  const form = document.querySelector("#event-activity-form");
+  editingActivityId = activity.id;
+  form.elements.activity_name.value = activity.activity_name || "";
+  form.elements.activity_date.value = activity.activity_date || "";
+  form.elements.start_time.value = (activity.start_time || "").slice(0, 5);
+  form.elements.end_time.value = (activity.end_time || "").slice(0, 5);
+  form.elements.location.value = activity.location || "";
+  form.elements.notes.value = activity.notes || "";
+  document.querySelector("#event-activity-form-panel").hidden = false;
+  document.querySelector("#event-activity-form-title").textContent = "Edit activity";
+  document.querySelector("#save-event-activity").textContent = "Save changes";
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function deleteEventActivity(activity) {
+  if (!rosterCanManage() || !window.confirm("Delete " + activity.activity_name + " from this event schedule?")) return;
+  const { error } = await supabaseClient.from("race_event_activities").delete().eq("id", activity.id);
+  const message = document.querySelector("#event-schedule-message");
+  if (error) {
+    message.textContent = "That activity could not be deleted. Check your access and try again.";
+    message.className = "inline-message error-state";
+    return;
+  }
+  message.textContent = "Activity deleted.";
+  message.className = "inline-message success-message";
+  await loadEventSchedule();
+  await loadRaceDay();
+}
+
+document.querySelector("#schedule-event-select")?.addEventListener("change", () => {
+  editingActivityId = null;
+  document.querySelector("#event-activity-form-panel").hidden = true;
+  void loadEventSchedule();
+});
+document.querySelector("#refresh-event-schedule")?.addEventListener("click", () => loadEventSchedule());
+document.querySelector("#add-activity-toggle")?.addEventListener("click", () => {
+  if (!rosterCanManage()) return;
+  editingActivityId = null;
+  const form = document.querySelector("#event-activity-form");
+  form.reset();
+  document.querySelector("#event-activity-form-title").textContent = "Add an activity";
+  document.querySelector("#save-event-activity").textContent = "Add to schedule";
+  document.querySelector("#event-activity-form-panel").hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+document.querySelector("#cancel-event-activity")?.addEventListener("click", () => {
+  editingActivityId = null;
+  document.querySelector("#event-activity-form").reset();
+  document.querySelector("#event-activity-form-panel").hidden = true;
+});
+document.querySelector("#event-activity-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!rosterCanManage()) return;
+  const form = event.currentTarget;
+  const eventId = document.querySelector("#schedule-event-select").value;
+  if (!eventId) return;
+  const values = {
+    event_id: eventId,
+    activity_name: form.elements.activity_name.value.trim(),
+    activity_date: form.elements.activity_date.value,
+    start_time: form.elements.start_time.value,
+    end_time: form.elements.end_time.value || null,
+    location: form.elements.location.value.trim() || null,
+    notes: form.elements.notes.value.trim() || null
+  };
+  const button = document.querySelector("#save-event-activity");
+  const message = document.querySelector("#event-schedule-message");
+  button.disabled = true;
+  button.textContent = "Saving…";
+  const isEditing = Boolean(editingActivityId);
+  const result = isEditing
+    ? await supabaseClient.from("race_event_activities").update(values).eq("id", editingActivityId)
+    : await supabaseClient.from("race_event_activities").insert({ ...values, created_by: currentUser?.id || null });
+  button.disabled = false;
+  button.textContent = isEditing ? "Save changes" : "Add to schedule";
+  if (result.error) {
+    message.textContent = "The activity could not be saved. Check that the end time is later than the start time and try again.";
+    message.className = "inline-message error-state";
+    return;
+  }
+  editingActivityId = null;
+  form.reset();
+  document.querySelector("#event-activity-form-panel").hidden = true;
+  message.textContent = "Activity saved to the event schedule.";
+  message.className = "inline-message success-message";
+  await loadEventSchedule();
+  await loadRaceDay();
+});
+
 // ROSTER MANAGEMENT
 let rosterEvents = [];
 let rosterRiders = [];
