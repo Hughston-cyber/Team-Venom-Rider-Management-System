@@ -12,10 +12,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261118-13">
+  <link rel="stylesheet" href="styles.css?v=20261118-14">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="app.js?v=20261118-13" defer></script>
+  <script src="app.js?v=20261118-14" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -360,6 +360,16 @@
     </section>
     </main>
   </div>
+  <dialog class="signout-dialog" id="signout-dialog" aria-labelledby="signout-dialog-title" aria-describedby="signout-dialog-copy">
+    <div class="signout-dialog-brand"><span class="brand-mark">V</span><span>TEAM <em>VENOM</em></span></div>
+    <p class="eyebrow">ACCOUNT SECURITY</p>
+    <h2 id="signout-dialog-title">Sign out?</h2>
+    <p id="signout-dialog-copy">Are you sure you want to sign out of the Rider Management System?</p>
+    <div class="signout-dialog-actions">
+      <button class="text-button" id="cancel-signout" type="button">Cancel</button>
+      <button class="primary-button signout-confirm-button" id="confirm-signout" type="button">Yes, sign out</button>
+    </div>
+  </dialog>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
