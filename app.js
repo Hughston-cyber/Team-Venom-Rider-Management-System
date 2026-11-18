@@ -1844,8 +1844,7 @@ function renderLiveRaceDisplay() {
         startRaceClockButton.disabled = true;
         if (stopRaceClockButton) { stopRaceClockButton.hidden = true; stopRaceClockButton.disabled = true; }
         if (restartRaceClockButton) { restartRaceClockButton.hidden = false; restartRaceClockButton.disabled = !canControlClock; }
-        return;
-      }
+      } else {
       const remaining = Math.max(0, duration - Math.floor((endTime - startedAtMs) / 1000));
       const hours = Math.floor(remaining / 3600);
       const minutes = Math.floor((remaining % 3600) / 60);
@@ -1862,6 +1861,7 @@ function renderLiveRaceDisplay() {
       if (restartRaceClockButton) {
         restartRaceClockButton.hidden = false;
         restartRaceClockButton.disabled = !canControlClock;
+      }
       }
     } else {
       if (moreClockControls) { moreClockControls.hidden = true; moreClockControls.open = false; }
