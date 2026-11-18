@@ -58,7 +58,8 @@ const pageCopy = {
   "changeover-log": ["Changeover log.", "Review the recorded rider handovers, stint times and race-clock differences."],
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
   settings: ["System settings.", "Review account access and notification preferences."],
-  accounts: ["Account management.", "Invite riders and manage their Team Venom login access."]
+  accounts: ["Account management.", "Invite riders and manage their Team Venom login access."],
+  operations: ["Operations hub.", "Emergency contacts, incident reporting, rider availability and race-weekend coordination."]
 };
 
 let currentRoles = [];
@@ -78,7 +79,7 @@ function selectView(view) {
   if (view === "race-day") view = "overview";
   if (view === "accounts" && !isAdministrator()) view = "overview";
   if (currentRoles.includes("member") && !currentRoles.some(role => ["administrator", "manager"].includes(role))) {
-    const memberViews = ["rider-workspace", "race-day", "notifications", "settings"];
+    const memberViews = ["rider-workspace", "race-day", "notifications", "settings", "operations"];
     if (!memberViews.includes(view)) view = "rider-workspace";
   }
   const copy = pageCopy[view] || pageCopy.overview;
@@ -92,7 +93,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","changeover-log","notifications","accounts","settings"];
+  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","changeover-log","notifications","accounts","settings","operations"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -110,6 +111,7 @@ function selectView(view) {
   if (view === "notifications") loadNotifications();
   if (view === "accounts") { loadRiderAccounts(); loadTeamVenomGmailStatus(); }
   if (view === "settings") loadSettings();
+  if (view === "operations") window.loadOperationsHub?.();
 }
 document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
@@ -1299,6 +1301,7 @@ document.querySelector("#event-form").addEventListener("submit", async event => 
     event_type: values.event_type.trim() || null,
     start_date: startDate,
     end_date: endDate,
+    start_time: values.start_time || "12:00",
     created_by: authData.user?.id
   });
   button.disabled = false;
