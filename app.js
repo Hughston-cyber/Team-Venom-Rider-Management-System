@@ -796,7 +796,8 @@ async function loadEventSchedule() {
     return;
   }
   eventScheduleEvents = events || [];
-  const selected = eventSelect.value;
+  let selected = eventSelect.value;
+  try { selected = selected || sessionStorage.getItem("team-venom-selected-event") || ""; } catch {}
   eventSelect.replaceChildren(new Option("Select a race event…", ""));
   eventScheduleEvents.forEach(item => {
     const details = [item.season_year, item.venue].filter(Boolean).join(" · ");
@@ -913,6 +914,7 @@ async function deleteEventActivity(activity) {
 
 document.querySelector("#schedule-event-select")?.addEventListener("change", () => {
   editingActivityId = null;
+  try { sessionStorage.setItem("team-venom-selected-event", document.querySelector("#schedule-event-select").value); } catch {}
   document.querySelector("#event-activity-form-panel").hidden = true;
   void loadEventSchedule();
 });
