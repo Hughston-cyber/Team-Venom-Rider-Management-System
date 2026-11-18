@@ -1823,7 +1823,8 @@ function renderLiveRaceDisplay() {
   const startRaceClockButton = document.querySelector("#start-race-clock-button");
   if (countdown && raceClockStatus && raceClockLabel && startRaceClockButton) {
     const startedAt = raceClockState?.race_clock_started_at;
-    const duration = Number(raceClockState?.race_clock_duration_seconds || 86400);
+    const rawDuration = raceClockState?.race_clock_duration_seconds;
+    const duration = rawDuration == null || rawDuration === "" ? 86400 : Number(rawDuration);
     const pausedAt = raceClockState?.race_clock_paused_at;
     const stopRaceClockButton = document.querySelector("#stop-race-clock-button");
     const restartRaceClockButton = document.querySelector("#restart-race-clock-button");
@@ -1832,8 +1833,20 @@ function renderLiveRaceDisplay() {
     if (startedAt) {
       startRaceClockButton.hidden = false;
       if (moreClockControls) moreClockControls.hidden = false;
-      const endTime = pausedAt ? new Date(pausedAt).getTime() : Date.now();
-      const remaining = Math.max(0, duration - Math.floor((endTime - new Date(startedAt).getTime()) / 1000));
+      const startedAtMs = new Date(startedAt).getTime();
+      const pausedAtMs = pausedAt ? new Date(pausedAt).getTime() : null;
+      const endTime = pausedAt ? pausedAtMs : Date.now();
+      if (!Number.isFinite(startedAtMs) || !Number.isFinite(duration) || duration <= 0 || (pausedAt && !Number.isFinite(pausedAtMs))) {
+        countdown.textContent = "--:--:--";
+        raceClockLabel.textContent = "CLOCK ERROR";
+        raceClockStatus.textContent = "The saved race clock data is invalid. An administrator needs to reset the race clock before it can run.";
+        startRaceClockButton.textContent = "CLOCK NEEDS RESET";
+        startRaceClockButton.disabled = true;
+        if (stopRaceClockButton) { stopRaceClockButton.hidden = true; stopRaceClockButton.disabled = true; }
+        if (restartRaceClockButton) { restartRaceClockButton.hidden = false; restartRaceClockButton.disabled = !canControlClock; }
+        return;
+      }
+      const remaining = Math.max(0, duration - Math.floor((endTime - startedAtMs) / 1000));
       const hours = Math.floor(remaining / 3600);
       const minutes = Math.floor((remaining % 3600) / 60);
       const seconds = remaining % 60;
