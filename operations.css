@@ -1,0 +1,46 @@
+/* Team Venom Operations Hub */
+.ops-countdown-panel{margin-bottom:16px;padding:22px}
+.ops-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.ops-panel-heading h2{font-size:19px;margin:0 0 6px}
+.ops-countdown-value{font:800 clamp(27px,5vw,48px)/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:-2px;color:var(--green);white-space:nowrap}
+.ops-countdown-select{max-width:360px;margin-top:18px}
+.ops-feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.ops-panel{padding:20px;min-width:0}
+.ops-panel .panel-heading{margin-bottom:15px}
+.ops-form{display:grid;gap:12px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
+.ops-field{display:grid;gap:6px;color:#cbd4cd;font-size:10px;font-weight:750;min-width:0}
+.ops-field input,.ops-field select,.ops-field textarea,.ops-inline-controls select,.ops-subheading select{width:100%;min-width:0;background:#090e0b;border:1px solid #354238;border-radius:5px;color:var(--text);padding:10px 11px;font:inherit;font-size:11px}
+.ops-field textarea{resize:vertical;line-height:1.5}
+.ops-field input:focus,.ops-field select:focus,.ops-field textarea:focus,.ops-inline-controls select:focus{outline:none;border-color:var(--green)}
+.ops-form-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ops-form-actions,.ops-contact-actions,.ops-inline-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ops-contact-actions{margin-top:12px}
+.ops-contact-actions a{text-decoration:none}
+.ops-record-list{display:grid;gap:9px}
+.ops-contact-card,.ops-record-card,.ops-health-card{padding:12px;background:#0b100d;border:1px solid #29352d;border-radius:5px;min-width:0}
+.ops-item-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ops-item-top strong,.ops-record-card>strong{font-size:12px;overflow-wrap:anywhere}
+.ops-item-top small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+.ops-muted-copy,.ops-meta{font-size:10px;color:var(--muted);line-height:1.55;overflow-wrap:anywhere}
+.ops-muted-copy{margin:10px 0 0}
+.ops-meta{display:block;margin-top:6px}
+.ops-status{display:inline-flex;padding:5px 8px;border-radius:3px;background:#202a20;color:#cbd4cd;font-size:9px;text-transform:uppercase;font-weight:800;letter-spacing:.6px;white-space:nowrap}
+.ops-status-available,.ops-status-closed{background:#1c2b17;color:var(--green)}
+.ops-status-unavailable,.ops-status-open{background:#30201b;color:#ffb6a9}
+.ops-status-late,.ops-status-in_progress{background:#2b291a;color:#e6d68a}
+.ops-subheading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 10px;font-size:11px}
+.ops-subheading select{max-width:190px}
+.ops-restricted-list{margin-top:20px;padding-top:15px;border-top:1px solid var(--line)}
+.ops-danger-button{color:#ffb6a9;border-color:#704137}
+.ops-health-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.ops-health-card .ops-item-top{align-items:center}
+.ops-health-dot{font-size:9px;font-weight:850;letter-spacing:.7px}
+.ops-health-dot.is-ok{color:var(--green)}
+.ops-health-dot.is-warning{color:#e6d68a}
+.ops-activity-row{padding:11px 2px;border-bottom:1px solid var(--line);display:grid;gap:5px}
+.ops-activity-row:last-child{border-bottom:0}
+.ops-activity-row strong{font-size:11px}
+.ops-activity-panel{grid-column:1/-1}
+.ops-system-panel{grid-column:1/-1}
+@media(max-width:900px){.ops-feature-grid{grid-template-columns:1fr}.ops-activity-panel,.ops-system-panel{grid-column:auto}}
+@media(max-width:520px){.ops-panel{padding:15px}.ops-countdown-panel{padding:16px}.ops-panel-heading{align-items:flex-start;flex-direction:column}.ops-countdown-value{font-size:32px}.ops-form-two,.ops-health-grid{grid-template-columns:1fr}.ops-subheading{align-items:flex-start;flex-direction:column}.ops-subheading select{max-width:none}}
