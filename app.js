@@ -64,6 +64,7 @@ const pageCopy = {
 };
 
 let currentRoles = [];
+let currentView = null;
 let ridersCache = [];
 let editingRiderId = null;
 
@@ -84,6 +85,8 @@ function selectView(view) {
     if (!memberViews.includes(view)) view = "rider-workspace";
   }
   const copy = pageCopy[view] || pageCopy.overview;
+  currentView = pageCopy[view] ? view : "overview";
+  try { sessionStorage.setItem("team-venom-last-view", currentView); } catch {}
   title.textContent = copy[0];
   const accent = document.createElement("span");
   title.append(accent);
@@ -656,7 +659,13 @@ async function showAuthenticatedWorkspace(session) {
   document.querySelector("#add-rider-toggle").hidden=!canManageRiders();document.querySelector("#account-management-nav").hidden=!isAdministrator();document.querySelector("#new-event-toggle").hidden=!rosterCanManage();
   document.querySelector("#create-manual-roster-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!rosterCanManage();});document.querySelector("#manual-stint-form").querySelectorAll("input,select,button").forEach(control=>{control.disabled=!rosterCanManage();});document.querySelector("#bulk-roster-panel").querySelectorAll("textarea,button").forEach(control=>{control.disabled=!rosterCanManage();});
   document.querySelectorAll("[data-role=staff]").forEach(node=>{node.hidden=isMemberOnly;});document.querySelectorAll("[data-role=rider]").forEach(node=>{node.hidden=!isMemberOnly;});
-  appShell.hidden=false;authScreen.hidden=true;selectView(isMemberOnly?"rider-workspace":"race-day");
+  appShell.hidden=false;authScreen.hidden=true;
+   let rememberedView = "overview";
+   try { rememberedView = sessionStorage.getItem("team-venom-last-view") || "overview"; } catch {}
+   const allowedViews = isMemberOnly ? ["rider-workspace","notifications","settings","operations"] : Object.keys(pageCopy);
+   if (!allowedViews.includes(rememberedView)) rememberedView = isMemberOnly ? "rider-workspace" : "overview";
+   if (currentView && allowedViews.includes(currentView)) rememberedView = currentView;
+   selectView(rememberedView);
 }
 
 const loginModeSelect=document.querySelector("#login-mode");
@@ -716,6 +725,53 @@ let eventScheduleActivities = [];
 let editingActivityId = null;
 let raceActivitiesByEvent = {};
 
+function activityDraftKey(eventId) {
+  return "team-venom-activity-draft:" + (currentUser?.id || "session") + ":" + eventId;
+}
+
+function saveActivityDraft() {
+  const form = document.querySelector("#event-activity-form");
+  const eventId = document.querySelector("#schedule-event-select")?.value;
+  if (!form || !eventId || !currentUser?.id) return;
+  const values = Object.fromEntries(["activity_name","activity_date","start_time","end_time","location","notes"].map(name => [name, form.elements[name]?.value || ""]));
+  try {
+    const hasContent = Object.values(values).some(value => String(value).trim());
+    if (!hasContent) sessionStorage.removeItem(activityDraftKey(eventId));
+    else sessionStorage.setItem(activityDraftKey(eventId), JSON.stringify({ values, editingActivityId }));
+  } catch {}
+}
+
+function restoreActivityDraft(eventId) {
+  const form = document.querySelector("#event-activity-form");
+  if (!form || !eventId || !currentUser?.id) return;
+  try {
+    const raw = sessionStorage.getItem(activityDraftKey(eventId));
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (!draft?.values) return;
+    Object.entries(draft.values).forEach(([name, value]) => {
+      if (form.elements[name]) form.elements[name].value = value ?? "";
+    });
+    editingActivityId = draft.editingActivityId || null;
+    document.querySelector("#event-activity-form-panel").hidden = false;
+    document.querySelector("#event-activity-form-title").textContent = editingActivityId ? "Edit activity" : "Add an activity";
+    document.querySelector("#save-event-activity").textContent = editingActivityId ? "Save changes" : "Add to schedule";
+    const message = document.querySelector("#event-schedule-message");
+    if (message) {
+      message.textContent = "Your unfinished activity has been restored.";
+      message.className = "inline-message";
+    }
+  } catch {}
+}
+
+function clearActivityDraft(eventId) {
+  if (!eventId) return;
+  try { sessionStorage.removeItem(activityDraftKey(eventId)); } catch {}
+}
+
+document.querySelector("#event-activity-form")?.addEventListener("input", saveActivityDraft);
+document.querySelector("#event-activity-form")?.addEventListener("change", saveActivityDraft);
+
 function localActivityDateTime(activity) {
   const date = String(activity.activity_date || "").slice(0, 10);
   const time = String(activity.start_time || "").trim();
@@ -766,6 +822,7 @@ async function loadEventSchedule() {
   }
   eventScheduleActivities = data || [];
   renderEventSchedule();
+  restoreActivityDraft(eventId);
   if (message && !message.textContent) message.textContent = "";
 }
 
@@ -835,6 +892,7 @@ function startActivityEdit(activity) {
   document.querySelector("#event-activity-form-panel").hidden = false;
   document.querySelector("#event-activity-form-title").textContent = "Edit activity";
   document.querySelector("#save-event-activity").textContent = "Save changes";
+  saveActivityDraft();
   form.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -864,6 +922,7 @@ document.querySelector("#add-activity-toggle")?.addEventListener("click", () => 
   editingActivityId = null;
   const form = document.querySelector("#event-activity-form");
   form.reset();
+  clearActivityDraft(document.querySelector("#schedule-event-select").value);
   document.querySelector("#event-activity-form-title").textContent = "Add an activity";
   document.querySelector("#save-event-activity").textContent = "Add to schedule";
   document.querySelector("#event-activity-form-panel").hidden = false;
@@ -872,6 +931,7 @@ document.querySelector("#add-activity-toggle")?.addEventListener("click", () => 
 document.querySelector("#cancel-event-activity")?.addEventListener("click", () => {
   editingActivityId = null;
   document.querySelector("#event-activity-form").reset();
+  clearActivityDraft(document.querySelector("#schedule-event-select").value);
   document.querySelector("#event-activity-form-panel").hidden = true;
 });
 document.querySelector("#event-activity-form")?.addEventListener("submit", async event => {
@@ -905,6 +965,7 @@ document.querySelector("#event-activity-form")?.addEventListener("submit", async
     return;
   }
   editingActivityId = null;
+  clearActivityDraft(eventId);
   form.reset();
   document.querySelector("#event-activity-form-panel").hidden = true;
   message.textContent = "Activity saved to the event schedule.";
