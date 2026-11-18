@@ -2023,7 +2023,40 @@ function renderLiveRaceDisplay() {
   const startValue = document.querySelector("#race-start-countdown-value");
   const startCaption = document.querySelector("#race-start-countdown-label");
   if (startName && startDateLabel && startValue && startCaption) {
-    if (!eventRecord?.start_date) {
+    const activities = liveSelectedEventId ? (raceActivitiesByEvent[liveSelectedEventId] || []) : [];
+    const nowTime = Date.now();
+    const timedActivities = activities.map(activity => ({ activity, startAt: localActivityDateTime(activity) }))
+      .filter(item => Number.isFinite(item.startAt.getTime()));
+    const nextActivity = timedActivities.filter(item => item.startAt.getTime() > nowTime).sort((a, b) => a.startAt - b.startAt)[0];
+    const currentActivity = timedActivities.filter(item => {
+      if (item.startAt.getTime() > nowTime) return false;
+      if (!item.activity.end_time) return true;
+      const endTime = String(item.activity.end_time);
+      const endAt = new Date(String(item.activity.activity_date).slice(0,10) + "T" + (endTime.length === 5 ? endTime + ":00" : endTime));
+      return Number.isFinite(endAt.getTime()) && nowTime < endAt.getTime();
+    }).sort((a, b) => b.startAt - a.startAt)[0];
+    if (nextActivity) {
+      const activity = nextActivity.activity;
+      startName.textContent = activity.activity_name.toUpperCase();
+      startDateLabel.textContent = formatActivityTime(nextActivity.startAt) + (activity.location ? " · " + activity.location : "");
+      const remaining = nextActivity.startAt.getTime() - nowTime;
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor(remaining % 86400000 / 3600000);
+      const minutes = Math.floor(remaining % 3600000 / 60000);
+      const seconds = Math.floor(remaining % 60000 / 1000);
+      startValue.textContent = (days ? days + "d " : "") + [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+      startCaption.textContent = "COUNTDOWN TO NEXT ACTIVITY";
+    } else if (currentActivity) {
+      startName.textContent = currentActivity.activity.activity_name.toUpperCase();
+      startDateLabel.textContent = "Currently underway" + (currentActivity.activity.location ? " · " + currentActivity.activity.location : "");
+      startValue.textContent = "NOW";
+      startCaption.textContent = "ACTIVITY IN PROGRESS";
+    } else if (activities.length) {
+      startName.textContent = "SCHEDULE COMPLETE";
+      startDateLabel.textContent = eventRecord?.event_name || "All scheduled activities have passed.";
+      startValue.textContent = "00:00:00";
+      startCaption.textContent = "ALL ACTIVITIES COMPLETE";
+    } else if (!eventRecord?.start_date) {
       startName.textContent = eventRecord?.event_name?.toUpperCase() || "NO EVENT SCHEDULED";
       startDateLabel.textContent = "An event start date has not been entered.";
       startValue.textContent = "—";
@@ -2033,7 +2066,7 @@ function renderLiveRaceDisplay() {
       const timePart = String(eventRecord.start_time || "12:00").trim();
       const validTime = /^[0-9]{2}:[0-9]{2}(:[0-9]{2})?$/.test(timePart);
       const startAt = validTime ? new Date(datePart + "T" + (timePart.length === 5 ? timePart + ":00" : timePart)) : new Date(NaN);
-      const remaining = startAt.getTime() - Date.now();
+      const remaining = startAt.getTime() - nowTime;
       startName.textContent = (eventRecord.event_name || "NEXT EVENT").toUpperCase();
       startDateLabel.textContent = Number.isFinite(startAt.getTime()) ? startAt.toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" }) : "Check the event start date and time.";
       if (!Number.isFinite(startAt.getTime())) {
@@ -2494,10 +2527,11 @@ setInterval(renderLiveRaceDisplay, 1000);
 
 async function loadRaceDay() {
   setupLiveRaceRealtime();
-  const [rosterResult, ridersResult, liveStateResult] = await Promise.all([
+  const [rosterResult, ridersResult, liveStateResult, activitiesResult] = await Promise.all([
     supabaseClient.from("roster_stints").select("id,stint_number,scheduled_start,scheduled_end,roster_notes,riders(first_name,last_name,preferred_name,photo_path),rosters!inner(id,event_id,status,race_events!inner(event_name,start_date,start_time))").in("rosters.status",["draft","published"]).order("scheduled_start",{ascending:true}),
     supabaseClient.from("riders").select("id",{count:"exact",head:true}).eq("status","active"),
-    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds,race_clock_paused_at,current_stint_started_at")
+    supabaseClient.from("live_race_state").select("event_id,current_roster_stint_id,previous_roster_stint_id,changed_at,changed_by,race_clock_started_at,race_clock_duration_seconds,race_clock_paused_at,current_stint_started_at"),
+    supabaseClient.from("race_event_activities").select("id,event_id,activity_name,activity_date,start_time,end_time,location,notes,display_order").order("activity_date",{ascending:true}).order("start_time",{ascending:true})
   ]);
   if (rosterResult.error || ridersResult.error) {
     const status = document.querySelector("#race-clock-status");
@@ -2505,6 +2539,8 @@ async function loadRaceDay() {
     return;
   }
   if (!liveStateResult.error) liveRaceStateByEvent = Object.fromEntries((liveStateResult.data || []).map(item => [item.event_id, item]));
+  raceActivitiesByEvent = {};
+  if (!activitiesResult.error) (activitiesResult.data || []).forEach(activity => { (raceActivitiesByEvent[activity.event_id] ||= []).push(activity); });
   raceDayRosterStints = await Promise.all((rosterResult.data || []).map(async item => {
     const path = item.riders?.photo_path;
     if (!path) return item;
