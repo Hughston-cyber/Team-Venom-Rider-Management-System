@@ -1,9 +1,11 @@
-const CACHE_NAME = "team-venom-shell-v24";
+const CACHE_NAME = "team-venom-shell-v25";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20261118-14",
-  "./app.js?v=20261118-14",
+  "./styles.css?v=20261118-15",
+  "./app.js?v=20261118-15",
+  "./operations.js?v=20261118-15",
+  "./operations.css?v=20261118-15",
   "./favicon.svg",
   "./manifest.webmanifest"
 ];
@@ -31,7 +33,7 @@ self.addEventListener("fetch", event => {
     try {
       // Prefer the live site so login fixes are not hidden behind an old cached shell.
       const response = await fetch(request);
-      if (response.ok && url.pathname.endsWith((".html", ".js", ".css", ".svg", ".webmanifest"))) {
+      if (response.ok && [".html", ".js", ".css", ".svg", ".webmanifest"].some(extension => url.pathname.endsWith(extension))) {
         await cache.put(request, response.clone());
       }
       return response;
