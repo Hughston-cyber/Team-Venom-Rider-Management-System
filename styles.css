@@ -357,3 +357,30 @@ button{touch-action:manipulation}
 .race-start-countdown-timer>span{font-size:clamp(20px,3vw,30px);font-weight:900;letter-spacing:1px;font-variant-numeric:tabular-nums;color:var(--green)}
 .race-start-countdown-timer small{font-size:8px;font-weight:800;letter-spacing:1.2px;color:var(--muted)}
 @media(max-width:520px){.race-start-countdown{padding:12px 13px;gap:10px}.race-start-countdown-copy strong{font-size:12px}.race-start-countdown-copy>span{font-size:10px}.race-start-countdown-timer>span{font-size:20px}}
+
+
+/* Event schedule */
+.event-schedule-panel{padding:22px;margin:16px 0}
+.event-schedule-toolbar{display:flex;align-items:end;justify-content:space-between;gap:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.event-schedule-toolbar>div{display:grid;gap:7px;min-width:min(100%,420px)}
+.event-schedule-toolbar .eyebrow{margin:0;color:var(--green);font-size:9px;font-weight:900;letter-spacing:1.4px}
+.event-schedule-select-label{font-size:10px;font-weight:800;color:#cbd4cd}
+.event-schedule-toolbar select{width:100%;background:#090e0b;border:1px solid #354238;border-radius:5px;color:var(--text);padding:11px 12px;font:inherit;font-size:11px}
+.event-schedule-count{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--green);white-space:nowrap;padding-bottom:10px}
+.event-activity-form-panel{margin:20px 0;padding:18px;background:#0b100d;border:1px solid #344333;border-radius:8px}
+.event-activity-form-panel .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.event-activity-form-panel .panel-heading h2{font-size:18px;margin:0}
+.event-activity-form-panel .panel-heading .eyebrow{margin:0 0 5px;color:var(--green);font-size:9px;font-weight:900;letter-spacing:1.3px}
+.event-activity-form-panel .roster-form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.event-activity-form-panel .roster-form-grid label{display:grid;gap:7px;color:#cbd4cd;font-size:10px;font-weight:700}
+.event-activity-form-panel input{width:100%;min-width:0;background:#090e0b;border:1px solid #354238;border-radius:5px;color:var(--text);padding:11px 12px;font:inherit;font-size:11px}
+.event-activity-form-panel input:focus{outline:none;border-color:var(--green)}
+.event-schedule-list{display:grid;gap:0;padding-top:4px}
+.event-activity-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:17px 3px;border-bottom:1px solid var(--line)}
+.event-activity-card:last-child{border-bottom:0}
+.event-activity-main .eyebrow{margin:0 0 6px;color:var(--green);font-size:9px;font-weight:900;letter-spacing:1px}
+.event-activity-main h3{margin:0 0 5px;font-size:15px;letter-spacing:-.2px}
+.event-activity-meta,.event-activity-notes{margin:0;color:var(--muted);font-size:10px;line-height:1.6}
+.event-activity-notes{margin-top:6px;color:#cbd4cd}
+.event-activity-actions{display:flex;align-items:center;gap:12px}
+@media(max-width:650px){.event-schedule-panel{padding:15px}.event-schedule-toolbar{align-items:stretch;flex-direction:column;gap:10px}.event-schedule-toolbar>div{min-width:0}.event-schedule-count{padding:0}.event-activity-form-panel .roster-form-grid{grid-template-columns:1fr}.event-activity-card{align-items:flex-start;grid-template-columns:1fr;gap:10px}.event-activity-actions{justify-content:flex-start}}
