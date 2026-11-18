@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261118-19">
-  <link rel="stylesheet" href="operations.css?v=20261118-19">
+  <link rel="stylesheet" href="styles.css?v=20261118-20">
+  <link rel="stylesheet" href="operations.css?v=20261118-20">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="app.js?v=20261118-19" defer></script>
-  <script src="operations.js?v=20261118-19" defer></script>
+  <script src="app.js?v=20261118-20" defer></script>
+  <script src="operations.js?v=20261118-20" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -51,6 +51,7 @@
         <button class="nav-link active" data-view="overview" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></svg> Race Control</button>
         <button class="nav-link" data-view="riders" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg> Riders</button>
         <button class="nav-link" data-view="rosters" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg> Rosters</button>
+        <button class="nav-link" data-view="event-schedule" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7.5 3v4M16.5 3v4M4 9h16M8 13h3M8 16h7"/></svg> Event schedule</button>
         <button class="nav-link" data-view="roster-versions" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="13" height="15" rx="2"/><path d="M4 16V4a1 1 0 0 1 1-1h11"/></svg> Roster versions</button>
         <button class="nav-link" data-view="performance" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg> Performance</button>
         <a class="nav-link" href="live-timing.html" data-role="staff" aria-label="Open Energy Breakthrough live timing"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7"/></svg> Live timing</a>
@@ -126,6 +127,34 @@
             </div>
           </section>
           <footer>TEAM VENOM <span>•</span> RACE CONTROL <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
+        </div>
+        <div id="event-schedule-content" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">TEAM OPERATIONS / EVENT PROGRAMME</p><h1>Event schedule<span>.</span></h1><p class="subheading">Plan every part of the race weekend, from design presentations to practice and the race itself.</p></div>
+            <div class="heading-actions"><button class="text-button" id="refresh-event-schedule" type="button">↻ Refresh</button><button class="primary-button" id="add-activity-toggle" type="button" hidden>+ Add activity</button></div>
+          </div>
+          <section class="panel event-schedule-panel">
+            <div class="event-schedule-toolbar">
+              <div><p class="eyebrow">SELECT EVENT</p><label class="event-schedule-select-label" for="schedule-event-select">Race event</label><select id="schedule-event-select"><option value="">Loading events…</option></select></div>
+              <span class="event-schedule-count" id="event-schedule-count">0 ACTIVITIES</span>
+            </div>
+            <div id="event-activity-form-panel" class="event-activity-form-panel" hidden>
+              <div class="panel-heading"><div><p class="eyebrow">EVENT PROGRAMME</p><h2 id="event-activity-form-title">Add an activity</h2></div><button class="text-button" id="cancel-event-activity" type="button">Cancel</button></div>
+              <form id="event-activity-form" class="roster-form-grid">
+                <label>Activity name<input name="activity_name" list="activity-name-suggestions" required maxlength="120" placeholder="e.g. Design and Presentation"></label>
+                <datalist id="activity-name-suggestions"><option value="Design and Presentation"></option><option value="Design and Construction"></option><option value="Practice"></option><option value="The Race"></option></datalist>
+                <label>Date<input name="activity_date" type="date" required></label>
+                <label>Start time<input name="start_time" type="time" required></label>
+                <label>End time <span class="muted">(optional)</span><input name="end_time" type="time"></label>
+                <label>Location <span class="muted">(optional)</span><input name="location" maxlength="160" placeholder="e.g. Presentation marquee"></label>
+                <label>Notes <span class="muted">(optional)</span><input name="notes" maxlength="1000" placeholder="What the team needs to know"></label>
+                <div class="form-actions"><button class="primary-button" id="save-event-activity" type="submit">Add to schedule</button></div>
+              </form>
+              <p class="inline-message" id="event-schedule-message" role="status" aria-live="polite"></p>
+            </div>
+            <div class="event-schedule-list" id="event-schedule-list"><p class="empty-state">Select a race event to load its activity schedule.</p></div>
+          </section>
+          <footer>TEAM VENOM <span>•</span> EVENT SCHEDULE <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
         </div>
         <div id="changeover-log-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / RACE RECORD</p><h1>Changeover log<span>.</span></h1><p class="subheading">A permanent record of confirmed rider handovers, stint durations and race-clock times.</p></div><div class="heading-actions"><button class="primary-button" id="export-changeover-log" type="button">↓ Export to Excel</button><button class="text-button" id="refresh-changeover-log" type="button">↻ Refresh log</button><button class="text-button danger-text" id="clear-changeover-log" type="button" hidden>Clear logs</button></div></div>
