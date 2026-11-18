@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261118-18">
-  <link rel="stylesheet" href="operations.css?v=20261118-18">
+  <link rel="stylesheet" href="styles.css?v=20261118-19">
+  <link rel="stylesheet" href="operations.css?v=20261118-19">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="app.js?v=20261118-18" defer></script>
-  <script src="operations.js?v=20261118-18" defer></script>
+  <script src="app.js?v=20261118-19" defer></script>
+  <script src="operations.js?v=20261118-19" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -79,6 +79,10 @@
             <div class="heading-actions"><span class="date-chip" id="race-control-event">LOADING EVENT</span><button class="text-button" id="refresh-race-day" type="button">↻ Refresh</button></div>
           </div>
           <div class="race-control-statusbar"><span class="race-control-status-dot"></span><strong id="race-control-event-status">CONNECTING TO LIVE OPERATIONS</strong><span class="race-control-status-time" id="overview-updated">LIVE SYNC</span></div>
+          <section class="race-start-countdown" aria-label="Countdown to event start">
+            <div class="race-start-countdown-copy"><p class="eyebrow">NEXT EVENT</p><strong id="race-start-countdown-name">LOADING EVENT</strong><span id="race-start-countdown-date">Waiting for event details</span></div>
+            <div class="race-start-countdown-timer"><span id="race-start-countdown-value">--:--:--</span><small id="race-start-countdown-label">TIME UNTIL START</small></div>
+          </section>
           <section class="live-race-display race-control-live-display" aria-label="Live rider handover display">
             <article class="live-rider-panel">
               <p class="eyebrow">CURRENTLY RIDING</p><div class="live-rider-photo" id="current-photo"><span class="live-rider-placeholder">—</span></div>
