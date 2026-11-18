@@ -1,11 +1,11 @@
-const CACHE_NAME = "team-venom-shell-v31";
+const CACHE_NAME = "team-venom-shell-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20261118-21",
-  "./app.js?v=20261118-21",
-  "./operations.js?v=20261118-21",
-  "./operations.css?v=20261118-21",
+  "./styles.css?v=20261118-22",
+  "./app.js?v=20261118-22",
+  "./operations.js?v=20261118-22",
+  "./operations.css?v=20261118-22",
   "./favicon.svg",
   "./manifest.webmanifest"
 ];
