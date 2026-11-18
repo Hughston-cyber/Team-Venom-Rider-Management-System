@@ -134,10 +134,35 @@ document.querySelector("#clear-changeover-log")?.addEventListener("click", async
 document.querySelector("#menu-toggle").addEventListener("click", () => {
   document.querySelector("#sidebar").classList.toggle("open");
 });
-document.querySelector("#signout-button").addEventListener("click", async () => {
-  const { error } = await supabaseClient.auth.signOut();
-  if (error) showMessage("Sign out failed. Please try again.");
+const signoutDialog = document.querySelector("#signout-dialog");
+const confirmSignoutButton = document.querySelector("#confirm-signout");
+
+document.querySelector("#signout-button").addEventListener("click", () => {
+  if (signoutDialog && typeof signoutDialog.showModal === "function") {
+    signoutDialog.showModal();
+  } else if (window.confirm("Are you sure you want to sign out of Team Venom Rider Management?")) {
+    performSignout();
+  }
 });
+
+document.querySelector("#cancel-signout").addEventListener("click", () => {
+  signoutDialog.close();
+});
+
+confirmSignoutButton.addEventListener("click", performSignout);
+
+async function performSignout() {
+  confirmSignoutButton.disabled = true;
+  confirmSignoutButton.textContent = "Signing out…";
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) {
+    showMessage("Sign out failed. Please try again.");
+    confirmSignoutButton.disabled = false;
+    confirmSignoutButton.textContent = "Yes, sign out";
+    signoutDialog.close();
+    return;
+  }
+}
 
 function canManageRiders() {
   return currentRoles.some(role => ["administrator", "manager"].includes(role));
