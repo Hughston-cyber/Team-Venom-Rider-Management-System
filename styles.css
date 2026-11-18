@@ -330,3 +330,19 @@ button{touch-action:manipulation}
 .device-push-toggle input:checked+.device-push-switch:after{transform:translateX(19px);background:#071007}
 .device-push-toggle input:focus-visible+.device-push-switch{outline:2px solid var(--green);outline-offset:3px}
 .device-push-toggle input:disabled+.device-push-switch{opacity:.45;cursor:not-allowed}
+
+
+/* Sign-out confirmation dialog */
+.signout-dialog{width:min( calc(100% - 32px), 420px);padding:28px;background:#101612;color:var(--text);border:1px solid #40513d;border-radius:10px;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.signout-dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.signout-dialog-brand{display:flex;align-items:center;gap:10px;margin-bottom:24px;font-size:11px;font-weight:900;letter-spacing:1px}
+.signout-dialog-brand em{color:var(--green);font-style:normal}
+.signout-dialog .brand-mark{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--green);border-radius:7px;color:var(--green);font-weight:900;font-size:18px}
+.signout-dialog .eyebrow{margin:0 0 8px;color:var(--green);font-size:9px;font-weight:900;letter-spacing:1.5px}
+.signout-dialog h2{margin:0 0 9px;font-size:25px;letter-spacing:-.6px}
+.signout-dialog>p:not(.eyebrow){margin:0;color:var(--muted);font-size:12px;line-height:1.65}
+.signout-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:25px}
+.signout-dialog-actions button{min-height:42px;margin:0}
+.signout-confirm-button{background:var(--green);color:#081007}
+.signout-confirm-button:disabled{opacity:.55;cursor:wait}
+@media(max-width:480px){.signout-dialog{padding:23px}.signout-dialog-actions{flex-direction:column-reverse}.signout-dialog-actions button{width:100%}}
