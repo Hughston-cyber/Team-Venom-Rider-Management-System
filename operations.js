@@ -13,8 +13,8 @@
     const date = String(event.start_date).slice(0, 10);
     const rawTime = String(event.start_time || "12:00").trim();
     let time;
-    if (/^\\d{2}:\\d{2}$/.test(rawTime)) time = rawTime + ":00";
-    else if (/^\\d{2}:\\d{2}:\\d{2}$/.test(rawTime)) time = rawTime;
+    if (/^[0-9]{2}:[0-9]{2}$/.test(rawTime)) time = rawTime + ":00";
+    else if (/^[0-9]{2}:[0-9]{2}:[0-9]{2}$/.test(rawTime)) time = rawTime;
     else return null;
     const parsed = new Date(date + "T" + time);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
