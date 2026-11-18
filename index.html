@@ -12,10 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Team Venom">
   <title>Team Venom | Rider Management</title>
-  <link rel="stylesheet" href="styles.css?v=20261118-14">
+  <link rel="stylesheet" href="styles.css?v=20261118-15">
+  <link rel="stylesheet" href="operations.css?v=20261118-15">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="app.js?v=20261118-14" defer></script>
+  <script src="app.js?v=20261118-15" defer></script>
+  <script src="operations.js?v=20261118-15" defer></script>
 </head>
 <body>
   <section class="auth-screen" id="auth-screen">
@@ -53,6 +55,7 @@
         <button class="nav-link" data-view="performance" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M8 5h11v11"/></svg> Performance</button>
         <a class="nav-link" href="live-timing.html" data-role="staff" aria-label="Open Energy Breakthrough live timing"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7"/></svg> Live timing</a>
 <button class="nav-link" data-view="changeover-log" data-role="staff"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg> Changeover log</button>
+        <button class="nav-link" data-view="operations"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M8 17h8"/></svg> Operations hub</button>
         <button class="nav-link" data-view="notifications"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/></svg> Notifications</button>
         <button class="nav-link" id="account-management-nav" data-view="accounts" hidden><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"/></svg> Account management</button>
       </nav>
@@ -210,6 +213,7 @@
               <label>Venue<input name="venue" maxlength="120" placeholder="e.g. Maryborough"></label>
               <label>Event type<input name="event_type" maxlength="60" placeholder="e.g. Energy Breakthrough"></label>
               <label>Start date<input name="start_date" type="date"></label>
+              <label>Event start time<input name="start_time" type="time" value="12:00"></label>
               <label>End date<input name="end_date" type="date"></label>
               <div class="form-actions"><button class="primary-button" id="save-event" type="submit">Create event</button></div>
             </form>
@@ -328,6 +332,80 @@
             <div class="panel-heading"><div><p class="eyebrow">ACCOUNT DIRECTORY</p><h2>Rider account links</h2></div><button class="text-button" type="button" id="refresh-rider-accounts">↻ Refresh</button></div>
             <div id="rider-account-list" class="record-list"><div class="empty-state">Loading rider accounts…</div></div>
           </section>
+        </div>
+
+        <div id="operations-content" hidden>
+          <div class="page-heading"><div><p class="eyebrow">TEAM OPERATIONS / EVENT SUPPORT</p><h1>Operations hub<span>.</span></h1><p class="subheading">Important information, team coordination and race-weekend records in one place.</p></div><div class="heading-actions"><button class="text-button" id="ops-refresh-all" type="button">↻ Refresh hub</button></div></div>
+          <section class="panel ops-countdown-panel">
+            <div class="ops-panel-heading"><div><p class="eyebrow">NEXT EVENT</p><h2>Race countdown</h2><p class="ops-muted-copy" id="ops-countdown-label">Choose an event with a start date.</p></div><div class="ops-countdown-value" id="ops-countdown-value">—</div></div>
+            <label class="ops-field ops-countdown-select">Countdown event<select id="ops-countdown-event"><option value="">Choose an event…</option></select></label>
+          </section>
+          <div class="ops-feature-grid">
+            <section class="panel ops-panel">
+              <div class="panel-heading"><div><p class="eyebrow">QUICK REFERENCE</p><h2>Emergency contacts</h2></div><span class="panel-tag">TEAM INFORMATION</span></div>
+              <div id="ops-emergency-list" class="ops-record-list"><p class="empty-state">Loading emergency contacts…</p></div>
+              <form id="ops-contact-form" class="ops-form" hidden>
+                <input type="hidden" name="contact_id">
+                <label class="ops-field">Contact name<input name="contact_name" required maxlength="120"></label>
+                <label class="ops-field">Role / organisation<input name="contact_role" required maxlength="120"></label>
+                <div class="ops-form-two"><label class="ops-field">Phone<input name="phone" type="tel" maxlength="50"></label><label class="ops-field">Email<input name="email" type="email" maxlength="254"></label></div>
+                <label class="ops-field">Additional details<textarea name="details" rows="2" maxlength="1000"></textarea></label>
+                <label class="ops-field">Display order<input name="sort_order" type="number" value="0"></label>
+                <div class="ops-form-actions"><button class="primary-button" id="ops-contact-save" type="submit">Add contact</button><button class="text-button" id="ops-contact-cancel" type="button">Cancel</button></div>
+                <p class="inline-message" id="ops-contact-message" role="status"></p>
+              </form>
+            </section>
+            <section class="panel ops-panel">
+              <div class="panel-heading"><div><p class="eyebrow">TEAM COORDINATION</p><h2>Rider availability</h2></div><span class="panel-tag">LIVE EVENT</span></div>
+              <form id="ops-availability-form" class="ops-form">
+                <label class="ops-field">Race event<select id="ops-availability-event" name="event_id" required><option value="">Choose an event…</option></select></label>
+                <label class="ops-field">Rider<select id="ops-availability-rider" name="rider_id" required><option value="">Choose a rider…</option></select></label>
+                <label class="ops-field">Availability<select name="availability_status" required><option value="available">Available</option><option value="unavailable">Unavailable</option><option value="late">Arriving late</option></select></label>
+                <label class="ops-field">Note <span class="ops-muted-copy">(optional)</span><textarea name="note" rows="2" maxlength="500" placeholder="Add a short availability note…"></textarea></label>
+                <button class="primary-button" type="submit">Save availability</button><p class="inline-message" id="ops-availability-message" role="status"></p>
+              </form>
+              <div class="ops-subheading"><strong>Submitted availability</strong><select id="ops-availability-filter" aria-label="Filter availability by event"><option value="">All events</option></select></div>
+              <div id="ops-availability-list" class="ops-record-list"><p class="empty-state">Loading availability…</p></div>
+            </section>
+            <section class="panel ops-panel">
+              <div class="panel-heading"><div><p class="eyebrow">RACE REPORTING</p><h2>Incident log</h2></div><span class="panel-tag">RESTRICTED RECORDS</span></div>
+              <p class="ops-muted-copy">Submit safety, medical, mechanical or operational incidents. Reports are visible to authorised management.</p>
+              <form id="ops-incident-form" class="ops-form">
+                <label class="ops-field">Race event<select id="ops-incident-event" name="event_id"><option value="">General / not event-specific</option></select></label>
+                <label class="ops-field">Category<select name="category" required><option>Safety</option><option>Medical</option><option>Mechanical</option><option>Operational</option><option>Other</option></select></label>
+                <label class="ops-field">Incident summary<input name="summary" required maxlength="180" placeholder="Short description"></label>
+                <label class="ops-field">Date and time<input name="occurred_at" type="datetime-local"></label>
+                <label class="ops-field">Location<input name="location" maxlength="180" placeholder="Where did it occur?"></label>
+                <label class="ops-field">Description<textarea name="description" required rows="3" maxlength="5000" placeholder="Record the relevant facts…"></textarea></label>
+                <label class="ops-field">Action taken<textarea name="action_taken" rows="2" maxlength="2000"></textarea></label>
+                <label class="ops-field">Follow-up required<textarea name="follow_up" rows="2" maxlength="2000"></textarea></label>
+                <button class="primary-button" type="submit">Submit incident report</button><p class="inline-message" id="ops-incident-message" role="status"></p>
+              </form>
+              <div id="ops-incident-list-panel" class="ops-restricted-list" hidden><div class="ops-subheading"><strong>Management incident register</strong></div><div id="ops-incident-list" class="ops-record-list"></div></div>
+            </section>
+            <section class="panel ops-panel">
+              <div class="panel-heading"><div><p class="eyebrow">SHIFT COMMUNICATION</p><h2>Handover notes</h2></div><span class="panel-tag">TEAM SHARED</span></div>
+              <form id="ops-handover-form" class="ops-form">
+                <label class="ops-field">Race event<select id="ops-handover-event" name="event_id"><option value="">General team update</option></select></label>
+                <label class="ops-field">Shift / handover title<input name="shift_label" required maxlength="120" placeholder="e.g. Night shift handover"></label>
+                <label class="ops-field">Notes<textarea name="note" required rows="4" maxlength="4000" placeholder="What does the next shift need to know?"></textarea></label>
+                <button class="primary-button" type="submit">Share handover note</button><p class="inline-message" id="ops-handover-message" role="status"></p>
+              </form>
+              <div class="ops-subheading"><strong>Recent team handovers</strong></div>
+              <div id="ops-handover-list" class="ops-record-list"><p class="empty-state">Loading handover notes…</p></div>
+            </section>
+            <section class="panel ops-panel ops-system-panel">
+              <div class="panel-heading"><div><p class="eyebrow">APPLICATION HEALTH</p><h2>System status</h2></div><button class="text-button" id="ops-refresh-status" type="button">↻ Check now</button></div>
+              <div id="ops-system-status" class="ops-health-grid"><p class="empty-state">Checking system services…</p></div>
+              <p class="ops-meta" id="ops-system-updated">Not checked yet</p>
+            </section>
+            <section class="panel ops-panel ops-activity-panel" id="ops-activity-panel" hidden>
+              <div class="panel-heading"><div><p class="eyebrow">SYSTEM RECORD</p><h2>Activity history</h2></div><span class="panel-tag">MANAGEMENT</span></div>
+              <p class="ops-muted-copy">Recent operations actions and database audit records.</p>
+              <div id="ops-activity-list" class="ops-record-list"><p class="empty-state">Loading activity…</p></div>
+            </section>
+          </div>
+          <footer>TEAM VENOM <span>•</span> OPERATIONS HUB <span class="footer-right">EVERY LAP. EVERY RIDER.</span></footer>
         </div>
         <div id="settings-content" hidden>
           <div class="page-heading"><div><p class="eyebrow">ACCOUNT / PREFERENCES</p><h1>Settings<span>.</span></h1><p class="subheading">Review your account access and notification preferences.</p></div></div>
