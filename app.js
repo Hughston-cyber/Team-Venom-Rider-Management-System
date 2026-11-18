@@ -2489,22 +2489,36 @@ async function refreshPushDeviceControl() {
 async function sendPushTest() {
   const button = document.querySelector("#test-push-device");
   const status = document.querySelector("#push-device-message");
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  if (!subscription) return;
-  button.disabled = true;
-  button.textContent = "Sending test…";
+  const originalLabel = button?.textContent || "Send test notification";
+  let timeoutId;
   try {
-    const { data, error } = await supabaseClient.functions.invoke("push-notifications", {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) throw new Error("This device is not registered for push notifications. Turn notifications on first.");
+    button.disabled = true;
+    button.textContent = "Sending test…";
+    const request = supabaseClient.functions.invoke("push-notifications", {
       body: { action: "test", endpoint: subscription.endpoint }
     });
+    const result = await Promise.race([
+      request,
+      new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error("The test request timed out. Check your connection and try again.")), 20000);
+      })
+    ]);
+    const { data, error } = result;
     if (error || data?.error) throw error || new Error(data.error);
-    status.textContent = "A test notification has been sent to this device.";
+    status.textContent = "The push service accepted a test notification for this device.";
     setModuleMessage("#preferences-message", status.textContent);
   } catch (error) {
     status.textContent = error?.message || "The test notification could not be sent.";
     setModuleMessage("#preferences-message", status.textContent, true);
   } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
     await refreshPushDeviceControl();
   }
 }
