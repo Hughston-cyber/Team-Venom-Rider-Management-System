@@ -59,7 +59,8 @@ const pageCopy = {
   notifications: ["Notifications.", "View in-app updates and send team announcements."],
   settings: ["System settings.", "Review account access and notification preferences."],
   accounts: ["Account management.", "Invite riders and manage their Team Venom login access."],
-  operations: ["Operations hub.", "Emergency contacts, incident reporting, rider availability and race-weekend coordination."]
+  operations: ["Operations hub.", "Emergency contacts, incident reporting, rider availability and race-weekend coordination."],
+  "event-schedule": ["Event schedule.", "Plan every activity across your Team Venom race weekend and track what is coming up next."]
 };
 
 let currentRoles = [];
@@ -93,7 +94,7 @@ function selectView(view) {
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
   });
-  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","changeover-log","notifications","accounts","settings","operations"];
+  const views = ["rider-workspace","overview","riders","rosters","roster-versions","performance","changeover-log","notifications","accounts","settings","operations","event-schedule"];
   views.forEach(name => {
     const node = document.querySelector("#" + (name === "race-day" ? "race-day" : name) + "-content");
     if (node) node.hidden = view !== name;
@@ -112,6 +113,7 @@ function selectView(view) {
   if (view === "accounts") { loadRiderAccounts(); loadTeamVenomGmailStatus(); }
   if (view === "settings") loadSettings();
   if (view === "operations") window.loadOperationsHub?.();
+  if (view === "event-schedule") loadEventSchedule();
 }
 document.querySelectorAll("[data-view]").forEach(button => {
   button.addEventListener("click", () => selectView(button.dataset.view));
